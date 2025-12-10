@@ -23,7 +23,7 @@ export async function uploadPdf(formData: FormData) {
   // Create a unique file path: uploads/TIMESTAMP_FILENAME
   const filePath = `uploads/${Date.now()}_${file.name.replace(/\s+/g, '_')}`;
   
-  const { data: storageData, error: storageError } = await supabase
+  const { data: storageData, error: storageError } = await supabaseAdmin
     .storage
     .from('facturas')
     .upload(filePath, file);
@@ -34,13 +34,13 @@ export async function uploadPdf(formData: FormData) {
   }
 
   // 2. Get Public URL
-  const { data: { publicUrl } } = supabase
+  const { data: { publicUrl } } = supabaseAdmin
     .storage
     .from('facturas')
     .getPublicUrl(storageData.path);
 
   // 3. Insert record into Database
-  const { error: dbError } = await supabase
+  const { error: dbError } = await supabaseAdmin
     .from('invoices')
     .insert({
       filename: file.name,
@@ -50,7 +50,7 @@ export async function uploadPdf(formData: FormData) {
   if (dbError) {
     console.error('Database Error:', dbError);
     // Optional: Cleanup stored file if DB insert fails
-    await supabase.storage.from('facturas').remove([storageData.path]);
+    await supabaseAdmin.storage.from('facturas').remove([storageData.path]);
     throw new Error('Error guardando en la base de datos');
   }
 
@@ -58,7 +58,7 @@ export async function uploadPdf(formData: FormData) {
 }
 
 export async function getInvoices() {
-  const { data, error } = await supabase
+  const { data, error } = await supabaseAdmin
     .from('invoices')
     .select('*')
     .order('created_at', { ascending: false });

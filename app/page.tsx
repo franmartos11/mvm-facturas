@@ -5,6 +5,8 @@ import ProductsList from '@/components/ProductsList';
 import DashboardSummary from '@/components/DashboardSummary';
 import DashboardClient from '@/components/DashboardClient';
 
+export const dynamic = 'force-dynamic';
+
 export default async function Home() {
   const invoices = await getInvoices();
   const items = await getAllInvoiceItems();
