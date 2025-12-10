@@ -1,9 +1,10 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { supabase } from '@/lib/supabase';
+import { createClient } from '@/utils/supabase/client';
 import { updateInvoiceItem } from '@/app/actions';
 
 export default function InvoiceItemsViewer({ invoiceId }: { invoiceId: number }) {
+  const supabase = createClient();
   const router = useRouter();
   const [items, setItems] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
