@@ -13,6 +13,48 @@ const supabaseAdmin = createAdminClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
 );
 
+import { redirect } from 'next/navigation';
+import { revalidatePath } from 'next/cache';
+
+export async function signOut() {
+  const supabase = await createClient();
+  await supabase.auth.signOut();
+  return redirect('/login');
+}
+
+export type ActionState = {
+  error: string | null;
+  success: string | null;
+};
+
+export async function changePassword(prevState: ActionState | null, formData: FormData): Promise<ActionState> {
+  const supabase = await createClient();
+  const password = formData.get('password') as string;
+  const confirmPassword = formData.get('confirmPassword') as string;
+
+  if (!password || !confirmPassword) {
+    return { error: 'Por favor, completa todos los campos.', success: null };
+  }
+
+  if (password !== confirmPassword) {
+    return { error: 'Las contraseñas no coinciden.', success: null };
+  }
+
+  if (password.length < 6) {
+    return { error: 'La contraseña debe tener al menos 6 caracteres.', success: null };
+  }
+
+  const { error } = await supabase.auth.updateUser({ password: password });
+
+  if (error) {
+    console.error('Error updating password:', error);
+    return { error: error.message, success: null };
+  }
+
+  revalidatePath('/profile');
+  return { success: 'Contraseña actualizada correctamente.', error: null };
+}
+
 export async function uploadPdf(formData: FormData) {
   const supabase = await createClient();
   
