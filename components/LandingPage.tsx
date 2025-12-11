@@ -1,14 +1,15 @@
 "use client";
 
 import Link from "next/link";
-import { ArrowRight, Upload, Brain, TrendingUp, CheckCircle2, Star, ShieldCheck } from "lucide-react";
-import { motion } from "framer-motion";
+import { ArrowRight, Upload, Brain, TrendingUp, CheckCircle2, Star, ShieldCheck, ChevronDown, Sparkles, FileText, Zap, PieChart } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
+import { useState } from "react";
 
 export default function LandingPage() {
   return (
-    <div className="flex flex-col min-h-screen bg-background overflow-hidden">
+    <div className="flex flex-col min-h-screen bg-background overflow-x-hidden">
       {/* Hero Section */}
-      <section className="relative pt-20 pb-32 px-4 overflow-hidden">
+      <section className="relative pt-20 pb-20 px-4 overflow-hidden">
         <div className="absolute inset-0 -z-10 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-blue-100/50 via-white to-transparent dark:from-blue-950/30 dark:via-zinc-950 dark:to-zinc-950" />
         
         <div className="max-w-7xl mx-auto flex flex-col items-center text-center space-y-8">
@@ -48,16 +49,97 @@ export default function LandingPage() {
             </Link>
           </motion.div>
 
+          {/* Hero Image Mockup - Browser Window Style */}
+          <motion.div 
+            initial={{ opacity: 0, y: 40, scale: 0.95 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            transition={{ duration: 0.8, delay: 0.4, type: "spring" }}
+            className="w-full max-w-5xl mt-16 relative"
+          >
+             {/* Glow Effect */}
+             <div className="absolute -inset-1 bg-gradient-to-r from-blue-600 to-indigo-600 rounded-2xl blur opacity-20 dark:opacity-40 animate-pulse" />
+             
+             <div className="relative rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 shadow-2xl overflow-hidden">
+                {/* Browser Header */}
+                <div className="h-10 border-b border-zinc-100 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900/50 flex items-center px-4 space-x-2">
+                   <div className="w-3 h-3 rounded-full bg-red-400/80" />
+                   <div className="w-3 h-3 rounded-full bg-amber-400/80" />
+                   <div className="w-3 h-3 rounded-full bg-green-400/80" />
+                   <div className="ml-4 flex-1 h-5 bg-zinc-200 dark:bg-zinc-800 rounded-full max-w-sm opacity-50" />
+                </div>
+                
+                {/* Browser Content (Mockup) */}
+                <div className="p-6 grid grid-cols-12 gap-6 bg-zinc-50/50 dark:bg-black/50 aspect-[16/9] md:aspect-[21/9]">
+                   {/* Sidebar */}
+                   <div className="hidden md:flex col-span-2 flex-col gap-3">
+                      <div className="h-8 w-24 bg-zinc-200 dark:bg-zinc-800 rounded mb-4 animate-pulse" />
+                      <div className="h-4 w-full bg-blue-100 dark:bg-blue-900/20 rounded animate-pulse" />
+                      <div className="h-4 w-2/3 bg-zinc-100 dark:bg-zinc-800 rounded animate-pulse" />
+                      <div className="h-4 w-3/4 bg-zinc-100 dark:bg-zinc-800 rounded animate-pulse" />
+                      <div className="h-4 w-full bg-zinc-100 dark:bg-zinc-800 rounded animate-pulse" />
+                   </div>
+                   
+                   {/* Main Content */}
+                   <div className="col-span-12 md:col-span-10 grid grid-cols-2 gap-4">
+                      {/* Top Cards */}
+                      <div className="col-span-2 grid grid-cols-3 gap-4">
+                         <div className="h-24 rounded-xl bg-white dark:bg-zinc-900 border border-zinc-100 dark:border-zinc-800 p-4 shadow-sm">
+                            <div className="h-8 w-8 rounded-full bg-green-100 dark:bg-green-900/30 mb-2" />
+                            <div className="h-4 w-16 bg-zinc-100 dark:bg-zinc-800 rounded" />
+                         </div>
+                         <div className="h-24 rounded-xl bg-white dark:bg-zinc-900 border border-zinc-100 dark:border-zinc-800 p-4 shadow-sm">
+                            <div className="h-8 w-8 rounded-full bg-blue-100 dark:bg-blue-900/30 mb-2" />
+                            <div className="h-4 w-16 bg-zinc-100 dark:bg-zinc-800 rounded" />
+                         </div>
+                         <div className="h-24 rounded-xl bg-white dark:bg-zinc-900 border border-zinc-100 dark:border-zinc-800 p-4 shadow-sm">
+                            <div className="h-8 w-8 rounded-full bg-purple-100 dark:bg-purple-900/30 mb-2" />
+                            <div className="h-4 w-16 bg-zinc-100 dark:bg-zinc-800 rounded" />
+                         </div>
+                      </div>
+                      
+                      {/* Big Chart Area */}
+                      <div className="col-span-2 md:col-span-1 h-32 md:h-full rounded-xl bg-white dark:bg-zinc-900 border border-zinc-100 dark:border-zinc-800 p-4 shadow-sm relative overflow-hidden">
+                          <div className="absolute bottom-0 left-0 right-0 h-16 bg-gradient-to-t from-blue-500/10 to-transparent" />
+                          <div className="flex items-end justify-between h-full gap-2 px-2 pb-2">
+                             {[40, 70, 45, 90, 60, 80].map((h, i) => (
+                                <motion.div 
+                                  key={i} 
+                                  initial={{ height: 0 }}
+                                  whileInView={{ height: `${h}%` }}
+                                  transition={{ duration: 1, delay: 0.5 + (i * 0.1) }}
+                                  className="w-full bg-blue-500/80 rounded-t-sm" 
+                                />
+                             ))}
+                          </div>
+                      </div>
+                      
+                      {/* List Area */}
+                      <div className="col-span-2 md:col-span-1 rounded-xl bg-white dark:bg-zinc-900 border border-zinc-100 dark:border-zinc-800 p-4 shadow-sm flex flex-col gap-3">
+                         {[1, 2, 3].map((i) => (
+                            <div key={i} className="flex items-center gap-3">
+                               <div className="w-8 h-8 rounded bg-zinc-100 dark:bg-zinc-800" />
+                               <div className="flex-1 space-y-1">
+                                  <div className="h-2 w-full bg-zinc-100 dark:bg-zinc-800 rounded" />
+                                  <div className="h-2 w-2/3 bg-zinc-100 dark:bg-zinc-800 rounded" />
+                               </div>
+                            </div>
+                         ))}
+                      </div>
+                   </div>
+                </div>
+             </div>
+          </motion.div>
+
           {/* Trust Logos */}
           <motion.div 
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
-            transition={{ duration: 1, delay: 0.5 }}
+            transition={{ duration: 1, delay: 0.8 }}
             className="pt-16 w-full"
           >
             <p className="text-sm text-zinc-500 dark:text-zinc-500 mb-6 font-medium">CON LA CONFIANZA DE EMPRESAS INNOVADORAS</p>
             <div className="flex flex-wrap justify-center items-center gap-8 md:gap-16 opacity-50 grayscale hover:grayscale-0 transition-all duration-500">
-               {/* Placeholders for logos - making them text for now but styled properly */}
+               {/* Placeholders for logos */}
                <span className="text-xl font-bold font-serif text-zinc-800 dark:text-white">Acme Corp</span>
                <span className="text-xl font-bold font-mono text-zinc-800 dark:text-white">GlobalTech</span>
                <span className="text-xl font-extrabold text-zinc-800 dark:text-white">NEXUS</span>
@@ -69,13 +151,52 @@ export default function LandingPage() {
       </section>
 
       {/* Stats Section */}
-      <section className="py-20 bg-zinc-50 dark:bg-zinc-900/50 border-y border-zinc-200 dark:border-zinc-800">
+      <section className="py-20 bg-white dark:bg-zinc-900 border-y border-zinc-200 dark:border-zinc-800">
         <div className="max-w-7xl mx-auto px-4">
           <div className="grid grid-cols-2 md:grid-cols-4 gap-8">
             <StatItem number="+10k" label="Facturas Procesadas" />
             <StatItem number="99.9%" label="Precisión AI" />
             <StatItem number="2.5h" label="Ahorro Diario Promedio" />
             <StatItem number="+500" label="Empresas Activas" />
+          </div>
+        </div>
+      </section>
+
+      {/* How It Works Section */}
+      <section className="py-24 px-4 bg-zinc-50 dark:bg-black relative overflow-hidden">
+        <div className="max-w-7xl mx-auto">
+          <div className="text-center mb-16">
+            <h2 className="text-3xl md:text-5xl font-bold mb-4 text-zinc-900 dark:text-white">Cómo Funciona</h2>
+            <p className="text-zinc-500 dark:text-zinc-400 max-w-2xl mx-auto text-lg">
+              Simplificamos el proceso contable en tres pasos simples.
+            </p>
+          </div>
+
+          <div className="grid md:grid-cols-3 gap-12 relative">
+             {/* Connector Line (Desktop) */}
+             <div className="hidden md:block absolute top-12 left-[15%] right-[15%] h-0.5 bg-gradient-to-r from-blue-200 via-indigo-200 to-blue-200 dark:from-blue-900 dark:via-indigo-900 dark:to-blue-900 -z-10" />
+
+             <HowItWorksStep 
+               number="1"
+               icon={<FileText className="w-6 h-6 text-white" />}
+               title="Sube tus archivos"
+               description="Arrastra y suelta tus facturas en PDF. Aceptamos múltiples archivos a la vez."
+               delay={0}
+             />
+             <HowItWorksStep 
+               number="2"
+               icon={<Zap className="w-6 h-6 text-white" />}
+               title="La IA Analiza"
+               description="Nuestros algoritmos extraen automáticamente proveedores, fechas, items y totales."
+               delay={0.2}
+             />
+              <HowItWorksStep 
+               number="3"
+               icon={<PieChart className="w-6 h-6 text-white" />}
+               title="Toma el Control"
+               description="Visualiza tus gastos, exporta reportes y toma decisiones basadas en datos reales."
+               delay={0.4}
+             />
           </div>
         </div>
       </section>
@@ -138,6 +259,32 @@ export default function LandingPage() {
         </div>
       </section>
 
+      {/* FAQ Section */}
+      <section className="py-24 px-4 max-w-5xl mx-auto">
+        <div className="text-center mb-12">
+          <h2 className="text-3xl md:text-4xl font-bold mb-4 text-zinc-900 dark:text-white">Preguntas Frecuentes</h2>
+          <p className="text-zinc-500 dark:text-zinc-400">Todo lo que necesitas saber antes de empezar.</p>
+        </div>
+        <div className="space-y-4 w-full">
+          <FaqItem 
+            question="¿Es gratuito empezar?" 
+            answer="Sí, tenemos un plan gratuito que te permite procesar hasta 50 facturas al mes sin costo alguno. No se requiere tarjeta de crédito." 
+          />
+          <FaqItem 
+            question="¿Qué tipos de archivos soportan?" 
+            answer="Actualmente soportamos archivos PDF nativos y escaneados. Nuestra IA es capaz de leer texto de imágenes con alta precisión." 
+          />
+          <FaqItem 
+            question="¿Mis datos están seguros?" 
+            answer="Absolutamente. Utilizamos encriptación de grado bancario para todos los archivos y datos en reposo y en tránsito. Tus facturas son privadas." 
+          />
+          <FaqItem 
+            question="¿Puedo exportar mis datos?" 
+            answer="Sí, puedes exportar todos los datos extraídos a Excel, CSV o conectarlos directamente con tu software contable vía API." 
+          />
+        </div>
+      </section>
+
       {/* CTA Section */}
       <section className="py-32 text-center px-4">
         <div className="max-w-4xl mx-auto bg-gradient-to-br from-blue-600 to-indigo-700 rounded-3xl p-12 md:p-20 shadow-2xl relative overflow-hidden">
@@ -172,6 +319,7 @@ export default function LandingPage() {
   );
 }
 
+// ... existing components (FeatureCard, StatItem, TestimonialCard) ...
 interface FeatureCardProps {
   icon: React.ReactNode;
   title: string;
@@ -223,6 +371,60 @@ function TestimonialCard({ quote, author, role }: { quote: string; author: strin
           <div className="text-sm text-zinc-500">{role}</div>
         </div>
       </div>
+    </div>
+  );
+}
+
+// NEW COMPONENTS
+
+function HowItWorksStep({ number, icon, title, description, delay }: { number: string; icon: React.ReactNode; title: string; description: string; delay: number }) {
+  return (
+    <motion.div 
+      initial={{ opacity: 0, y: 20 }}
+      whileInView={{ opacity: 1, y: 0 }}
+      viewport={{ once: true }}
+      transition={{ duration: 0.5, delay }}
+      className="flex flex-col items-center text-center relative z-10 group"
+    >
+       <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-blue-500 to-indigo-600 shadow-lg shadow-blue-500/20 flex items-center justify-center mb-6 transform transition-transform group-hover:scale-110 group-hover:rotate-3">
+         {icon}
+         <div className="absolute -top-2 -right-2 w-6 h-6 bg-white dark:bg-zinc-800 rounded-full border border-blue-100 dark:border-blue-900 flex items-center justify-center text-xs font-bold text-blue-600 dark:text-blue-400 shadow-sm">
+            {number}
+         </div>
+       </div>
+       <h3 className="text-xl font-bold mb-3 text-zinc-900 dark:text-white">{title}</h3>
+       <p className="text-zinc-500 dark:text-zinc-400 leading-relaxed">{description}</p>
+    </motion.div>
+  );
+}
+
+function FaqItem({ question, answer }: { question: string; answer: string }) {
+  const [isOpen, setIsOpen] = useState(false);
+
+  return (
+    <div className="w-full border border-zinc-200 dark:border-zinc-800 rounded-xl bg-white dark:bg-zinc-900 overflow-hidden">
+      <button 
+        onClick={() => setIsOpen(!isOpen)}
+        className="flex items-center justify-between w-full p-6 text-left focus:outline-none"
+      >
+        <span className="font-semibold text-zinc-900 dark:text-zinc-100">{question}</span>
+        <ChevronDown className={`w-5 h-5 text-zinc-500 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
+      </button>
+      <AnimatePresence>
+        {isOpen && (
+          <motion.div 
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: "auto", opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={{ duration: 0.2 }}
+            className="overflow-hidden"
+          >
+            <div className="px-6 pb-6 text-zinc-500 dark:text-zinc-400 leading-relaxed break-words">
+              {answer}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
