@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import ProductHistoryModal from './ProductHistoryModal';
 
 interface ProductsListClientProps {
@@ -12,7 +12,63 @@ export default function ProductsListClient({ initialItems }: ProductsListClientP
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedProduct, setSelectedProduct] = useState<string | null>(null);
 
-  const filteredItems = initialItems.filter(item => 
+  // Calculate trends for each item
+  const itemsWithTrends = useMemo(() => {
+    if (!initialItems) return [];
+    
+    // 1. Group by product name
+    const groups: Record<string, any[]> = {};
+    const normalize = (s: string) => s.toLowerCase().trim();
+    
+    initialItems.forEach(item => {
+      const key = normalize(item.description);
+      if (!groups[key]) groups[key] = [];
+      groups[key].push(item);
+    });
+
+    // 2. Sort groups by date and calculate trends
+    const trendMap = new Map<number, { change: number, type: 'up' | 'down' | 'same' | 'new' }>();
+
+    Object.values(groups).forEach(group => {
+       // Sort ascending by date
+       group.sort((a, b) => {
+         const d1 = new Date(a.invoices?.created_at || 0).getTime();
+         const d2 = new Date(b.invoices?.created_at || 0).getTime();
+         return d1 - d2;
+       });
+
+       group.forEach((item, index) => {
+         if (index === 0) {
+           trendMap.set(item.id, { change: 0, type: 'new' });
+         } else {
+           const prev = group[index - 1];
+           const currentPrice = Number(item.unit_price);
+           const prevPrice = Number(prev.unit_price);
+           
+           if (prevPrice === 0) {
+              trendMap.set(item.id, { change: 0, type: 'new' });
+              return;
+           }
+
+           const change = ((currentPrice - prevPrice) / prevPrice) * 100;
+           
+           let type: 'up' | 'down' | 'same' = 'same';
+           if (change > 0.5) type = 'up'; // Threshold to avoid floating point noise
+           if (change < -0.5) type = 'down';
+
+           trendMap.set(item.id, { change: Math.abs(change), type });
+         }
+       });
+    });
+
+    // Return items enriched (or just map inputs to outputs in render, but lets attach map)
+    return initialItems.map(item => ({
+      ...item,
+      trend: trendMap.get(item.id) || { change: 0, type: 'new' }
+    }));
+  }, [initialItems]);
+
+  const filteredItems = itemsWithTrends.filter(item => 
     item.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
     item.invoices?.filename.toLowerCase().includes(searchQuery.toLowerCase())
   );
@@ -61,7 +117,7 @@ export default function ProductsListClient({ initialItems }: ProductsListClientP
                 filteredItems.map((item) => (
                   <tr 
                     key={item.id} 
-                    className="hover:bg-zinc-50 dark:hover:bg-zinc-800/50 transition-colors cursor-pointer"
+                    className="hover:bg-zinc-50 dark:hover:bg-zinc-800/50 transition-colors cursor-pointer group"
                     onClick={() => setSelectedProduct(item.description)}
                   >
                     <td className="px-6 py-4 font-medium text-slate-900 dark:text-zinc-100">
@@ -73,8 +129,28 @@ export default function ProductsListClient({ initialItems }: ProductsListClientP
                     <td className="px-6 py-4 text-right text-slate-600 dark:text-zinc-300">
                       {item.quantity}
                     </td>
-                    <td className="px-6 py-4 text-right text-slate-600 dark:text-zinc-300">
-                      ${Number(item.unit_price).toFixed(2)}
+                    <td className="px-6 py-4 text-right flex justify-end items-center gap-2">
+                       <span className="text-slate-600 dark:text-zinc-300">
+                         ${Number(item.unit_price).toFixed(2)}
+                       </span>
+                       
+                       {/* Trend Indicator */}
+                       {item.trend.type === 'up' && (
+                         <div className="flex items-center text-red-500 bg-red-50 dark:bg-red-900/20 px-1.5 py-0.5 rounded text-[10px] font-medium" title={`Subió un ${item.trend.change.toFixed(1)}% respecto a la compra anterior`}>
+                           <svg className="w-3 h-3 mr-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
+                           </svg>
+                           {item.trend.change.toFixed(0)}%
+                         </div>
+                       )}
+                       {item.trend.type === 'down' && (
+                         <div className="flex items-center text-green-500 bg-green-50 dark:bg-green-900/20 px-1.5 py-0.5 rounded text-[10px] font-medium" title={`Bajó un ${item.trend.change.toFixed(1)}% respecto a la compra anterior`}>
+                            <svg className="w-3 h-3 mr-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 17h8m0 0V9m0 8l-8-8-4 4-6-6" />
+                           </svg>
+                           {item.trend.change.toFixed(0)}%
+                         </div>
+                       )}
                     </td>
                     <td className="px-6 py-4 text-right font-medium text-slate-900 dark:text-zinc-100">
                       ${Number(item.total_price).toFixed(2)}

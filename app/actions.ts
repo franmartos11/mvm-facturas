@@ -126,17 +126,23 @@ export async function analyzeInvoice(invoiceId: number, fileUrl: string) {
     const model = genAI.getGenerativeModel({ model: 'gemini-flash-latest' });
 
     const prompt = `
-      Analiza esta factura y extrae los ítems comprados.
+      Analiza esta factura e identifica:
+      1. El nombre del PROVEEDOR (ej: Mercadona, Endesa, Farmacia X). Si no es obvio, pon "Desconocido".
+      2. Los ítems comprados.
+
       Devuélveme SOLO un JSON válido con esta estructura:
-      [
-        {
-          "description": "Nombre del producto",
-          "quantity": 1,
-          "unit_price": 10.50,
-          "total_price": 10.50
-        }
-      ]
-      No incluyas markdown, ni comillas extra, solo el array JSON crudo.
+      {
+        "supplier": "Nombre Proveedor",
+        "items": [
+          {
+            "description": "Nombre del producto",
+            "quantity": 1,
+            "unit_price": 10.50,
+            "total_price": 10.50
+          }
+        ]
+      }
+      No incluyas markdown, ni comillas extra, solo el objeto JSON crudo.
     `;
 
     // 3. Generate Content
@@ -154,13 +160,20 @@ export async function analyzeInvoice(invoiceId: number, fileUrl: string) {
     
     // Clean markdown if present (```json ... ```)
     const jsonStr = text.replace(/```json/g, '').replace(/```/g, '').trim();
-    const items = JSON.parse(jsonStr);
+    const data = JSON.parse(jsonStr);
+    
+    // Compatibility: Handle if AI returns just array (fallback) or new object
+    const items = Array.isArray(data) ? data : data.items;
+    const supplier = Array.isArray(data) ? 'Desconocido' : (data.supplier || 'Desconocido');
 
     // 4. Save to Database
     // Using Admin to ensure status update success regardless of complex RLS
     const { error: updateError } = await supabaseAdmin
       .from('invoices')
-      .update({ status: 'analyzed' })
+      .update({ 
+        status: 'analyzed',
+        supplier: supplier
+      })
       .eq('id', invoiceId);
 
     if (updateError) {

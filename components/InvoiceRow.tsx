@@ -80,6 +80,11 @@ export default function InvoiceRow({ invoice }: InvoiceRowProps) {
             <div className="flex items-center gap-2">
               <p className="text-xs text-slate-500 dark:text-zinc-400">
                 {new Date(invoice.created_at).toLocaleDateString('es-ES')}
+                {invoice.supplier && (
+                  <span className="ml-2 font-medium text-slate-700 dark:text-zinc-300">
+                    • {invoice.supplier}
+                  </span>
+                )}
               </p>
               {invoice.status === 'analyzed' && (
                 <span className="text-[10px] bg-green-100 text-green-700 px-1.5 py-0.5 rounded-full font-medium">
