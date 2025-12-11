@@ -4,6 +4,7 @@ import InvoiceList from '@/components/InvoiceList';
 import ProductsList from '@/components/ProductsList';
 import DashboardSummary from '@/components/DashboardSummary';
 import DashboardClient from '@/components/DashboardClient';
+import DashboardCharts from '@/components/DashboardCharts';
 
 export const dynamic = 'force-dynamic';
 
@@ -27,6 +28,9 @@ export default async function Home() {
 
         {/* Summary Cards */}
         <DashboardSummary invoices={invoices || []} items={items || []} />
+
+        {/* Charts */}
+        <DashboardCharts items={items || []} />
 
         {/* Main Content Grid */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
