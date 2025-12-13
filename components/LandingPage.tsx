@@ -235,10 +235,10 @@ export default function LandingPage() {
       </section>
 
       {/* Testimonials Section */}
-      <section className="py-32 bg-zinc-900 text-white relative overflow-hidden">
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] from-blue-900/20 via-zinc-900 to-zinc-900" />
+      <section className="py-32 bg-muted/30 relative overflow-hidden">
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] from-blue-500/5 via-transparent to-transparent dark:from-blue-900/10" />
         <div className="max-w-7xl mx-auto px-4 relative z-10">
-          <h2 className="text-3xl md:text-4xl font-bold text-center mb-16">Lo que dicen nuestros usuarios</h2>
+          <h2 className="text-3xl md:text-4xl font-bold text-center mb-16 text-foreground">Lo que dicen nuestros usuarios</h2>
           <div className="grid md:grid-cols-3 gap-8">
             <TestimonialCard 
               quote="Antes perdía horas pasando datos a Excel. Facturas IA lo hace en segundos y sin errores. Es magia."
@@ -355,20 +355,20 @@ function StatItem({ number, label }: { number: string; label: string }) {
 
 function TestimonialCard({ quote, author, role }: { quote: string; author: string; role: string }) {
   return (
-    <div className="p-8 rounded-2xl bg-zinc-800/50 border border-zinc-700/50">
+    <div className="p-8 rounded-2xl bg-card border border-border shadow-sm hover:shadow-md transition-shadow">
       <div className="flex gap-1 mb-6">
         {[1, 2, 3, 4, 5].map((i) => (
           <Star key={i} className="w-4 h-4 text-yellow-500 fill-yellow-500" />
         ))}
       </div>
-      <p className="text-zinc-300 mb-6 italic text-lg">"{quote}"</p>
+      <p className="text-muted-foreground mb-6 italic text-lg">"{quote}"</p>
       <div className="flex items-center gap-4">
         <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-500 to-indigo-500 flex items-center justify-center text-sm font-bold text-white">
           {author[0]}
         </div>
         <div>
-          <div className="font-bold text-white">{author}</div>
-          <div className="text-sm text-zinc-500">{role}</div>
+          <div className="font-bold text-foreground">{author}</div>
+          <div className="text-sm text-muted-foreground">{role}</div>
         </div>
       </div>
     </div>
