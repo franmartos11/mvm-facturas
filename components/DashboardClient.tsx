@@ -23,12 +23,12 @@ export default function DashboardClient() {
   };
 
   return (
-    <div className="w-full bg-white dark:bg-zinc-900 rounded-2xl shadow-sm border border-zinc-100 dark:border-zinc-800 p-8">
+    <div className="w-full bg-card rounded-2xl shadow-sm border border-border p-8 hover:shadow-md transition-shadow duration-300">
       <div className="text-center space-y-2 mb-8">
-        <h1 className="text-2xl font-bold tracking-tight text-zinc-900 dark:text-zinc-50">
+        <h1 className="text-2xl font-bold tracking-tight text-foreground">
           {step === 'upload' ? 'Subir Facturas' : 'Procesando Archivos'}
         </h1>
-        <p className="text-zinc-500 dark:text-zinc-400">
+        <p className="text-muted-foreground">
           {step === 'upload' 
             ? 'Sube tus facturas en formato PDF para procesarlas automáticamente.'
             : 'Estamos guardando tus facturas en la base de datos.'
@@ -48,7 +48,7 @@ export default function DashboardClient() {
                 px-8 py-3 rounded-lg font-medium text-white transition-all
                 ${files.length > 0 
                   ? 'bg-blue-600 hover:bg-blue-700 shadow-md hover:shadow-lg transform hover:-translate-y-0.5' 
-                  : 'bg-zinc-300 dark:bg-zinc-800 cursor-not-allowed'
+                  : 'bg-muted cursor-not-allowed'
                 }
               `}
             >

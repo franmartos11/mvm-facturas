@@ -62,26 +62,26 @@ export default function InvoiceRow({ invoice }: InvoiceRowProps) {
         message={`Esta acción no se puede deshacer. Se eliminará la factura "${invoice.filename}" y todos sus datos.`}
         isDestructive={true}
       />
-      <div className="flex flex-col border-b border-zinc-100 last:border-0 dark:border-zinc-800">
+      <div className="flex flex-col border-b border-border last:border-0">
       <div 
-        className="flex items-center justify-between p-4 hover:bg-zinc-50 dark:hover:bg-zinc-800/50 transition-colors cursor-pointer"
+        className="flex items-center justify-between p-4 hover:bg-accent/50 transition-colors cursor-pointer"
         onClick={() => invoice.status === 'analyzed' && setIsExpanded(!isExpanded)}
       >
         <div className="flex items-center gap-4 min-w-0">
-          <div className="w-10 h-10 bg-red-50 dark:bg-red-900/20 rounded-lg flex items-center justify-center shrink-0">
+          <div className="w-10 h-10 bg-destructive/10 rounded-lg flex items-center justify-center shrink-0">
             <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
             </svg>
           </div>
           <div className="min-w-0">
-            <p className="font-medium text-slate-900 dark:text-zinc-100 truncate">
+            <p className="font-medium text-foreground truncate">
               {invoice.filename}
             </p>
             <div className="flex items-center gap-2">
-              <p className="text-xs text-slate-500 dark:text-zinc-400">
+              <p className="text-xs text-muted-foreground">
                 {new Date(invoice.created_at).toLocaleDateString('es-ES')}
                 {invoice.supplier && (
-                  <span className="ml-2 font-medium text-slate-700 dark:text-zinc-300">
+                  <span className="ml-2 font-medium text-foreground">
                     • {invoice.supplier}
                   </span>
                 )}
@@ -108,8 +108,8 @@ export default function InvoiceRow({ invoice }: InvoiceRowProps) {
               className={`
                 px-3 py-1.5 text-xs font-medium rounded-md transition-colors
                 ${isAnalyzing 
-                  ? 'bg-zinc-100 text-zinc-400 cursor-wait' 
-                  : 'bg-blue-50 text-blue-600 hover:bg-blue-100 border border-blue-200'
+                  ? 'bg-muted text-muted-foreground cursor-wait' 
+                  : 'bg-primary/10 text-primary hover:bg-primary/20 border border-primary/20'
                 }
               `}
             >
@@ -120,7 +120,7 @@ export default function InvoiceRow({ invoice }: InvoiceRowProps) {
           {invoice.status === 'analyzed' && (
              <button
               onClick={() => setIsExpanded(!isExpanded)}
-              className="px-3 py-1.5 text-xs font-medium rounded-md bg-zinc-100 text-zinc-600 hover:bg-zinc-200"
+              className="px-3 py-1.5 text-xs font-medium rounded-md bg-secondary text-secondary-foreground hover:bg-secondary/80"
             >
               {isExpanded ? 'Ocultar' : 'Ver Detalles'}
             </button>
@@ -130,7 +130,7 @@ export default function InvoiceRow({ invoice }: InvoiceRowProps) {
             href={invoice.file_url} 
             target="_blank" 
             rel="noopener noreferrer"
-            className="p-2 text-slate-400 hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
+            className="p-2 text-muted-foreground hover:text-primary transition-colors"
             title="Abrir PDF"
           >
             <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -141,7 +141,7 @@ export default function InvoiceRow({ invoice }: InvoiceRowProps) {
           <button
             onClick={handleDelete}
             disabled={isAnalyzing}
-            className="p-2 text-slate-400 hover:text-red-500 transition-colors"
+            className="p-2 text-muted-foreground hover:text-destructive transition-colors"
             title="Borrar Factura"
           >
              <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">

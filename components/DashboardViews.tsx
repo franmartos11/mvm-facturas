@@ -14,14 +14,14 @@ export default function DashboardViews({ invoicesView, productsView }: Dashboard
     <div className="w-full flex flex-col gap-8">
       
       {/* Tabs */}
-      <div className="bg-zinc-100 dark:bg-zinc-800 p-1 rounded-lg flex items-center gap-1">
+      <div className="bg-muted p-1 rounded-lg flex items-center gap-1">
         <button
           onClick={() => setView('invoices')}
           className={`
             px-4 py-2 text-sm font-medium rounded-md transition-all
             ${view === 'invoices' 
-              ? 'bg-white dark:bg-zinc-700 text-slate-900 dark:text-white shadow-sm' 
-              : 'text-zinc-500 dark:text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200'
+              ? 'bg-background text-foreground shadow-sm' 
+              : 'text-muted-foreground hover:text-foreground'
             }
           `}
         >
@@ -32,8 +32,8 @@ export default function DashboardViews({ invoicesView, productsView }: Dashboard
           className={`
             px-4 py-2 text-sm font-medium rounded-md transition-all
             ${view === 'products' 
-              ? 'bg-white dark:bg-zinc-700 text-slate-900 dark:text-white shadow-sm' 
-              : 'text-zinc-500 dark:text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200'
+              ? 'bg-background text-foreground shadow-sm' 
+              : 'text-muted-foreground hover:text-foreground'
             }
           `}
         >

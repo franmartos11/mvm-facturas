@@ -4,6 +4,9 @@ import LandingPage from '@/components/LandingPage';
 
 export const dynamic = 'force-dynamic';
 
+import { Suspense } from 'react';
+import DashboardSkeleton from '@/components/DashboardSkeleton';
+
 export default async function Home() {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
@@ -12,5 +15,9 @@ export default async function Home() {
     return <LandingPage />;
   }
 
-  return <Dashboard />;
+  return (
+    <Suspense fallback={<DashboardSkeleton />}>
+      <Dashboard />
+    </Suspense>
+  );
 }

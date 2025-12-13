@@ -10,7 +10,7 @@ export default async function Navbar() {
   } = await supabase.auth.getUser();
 
   return (
-    <nav className="w-full flex justify-center border-b border-b-foreground/10 h-16 bg-white dark:bg-zinc-900/80 backdrop-blur-md sticky top-0 z-50">
+    <nav className="w-full flex justify-center border-b border-border h-16 bg-background/80 backdrop-blur-md sticky top-0 z-50">
       <div className="w-full max-w-7xl flex justify-between items-center px-6 text-sm">
         <Link href="/" className="font-bold text-xl">
           Facturas IA

@@ -11,14 +11,14 @@ export default async function Dashboard() {
   const items = await getAllInvoiceItems();
 
   return (
-    <main className="min-h-screen p-8 bg-zinc-50 dark:bg-black font-[family-name:var(--font-geist-sans)]">
+    <main className="min-h-screen p-8 bg-muted/40 font-[family-name:var(--font-geist-sans)]">
       <div className="max-w-7xl mx-auto space-y-8">
-        <header className="flex items-center justify-between pb-6 border-b border-zinc-200 dark:border-zinc-800">
+        <header className="flex items-center justify-between pb-6 border-b border-border">
           <div>
-            <h1 className="text-3xl font-bold text-slate-900 dark:text-zinc-100 tracking-tight">
+            <h1 className="text-3xl font-bold text-foreground tracking-tight">
               Gestor de Facturas
             </h1>
-            <p className="text-slate-500 dark:text-zinc-400 mt-1">
+            <p className="text-muted-foreground mt-1">
               Sube tus facturas PDF y deja que la IA extraiga los datos por ti.
             </p>
           </div>

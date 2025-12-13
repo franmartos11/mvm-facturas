@@ -104,10 +104,10 @@ export default function ProductsListClient({ initialItems }: ProductsListClientP
     <div className="w-full mt-6 space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-           <h2 className="text-xl font-bold text-slate-900 dark:text-zinc-50">
+           <h2 className="text-xl font-bold text-foreground">
             Productos Extraídos
           </h2>
-          <p className="text-sm text-slate-500 dark:text-zinc-400">
+          <p className="text-sm text-muted-foreground">
             Monitoriza los precios y cantidades de tus compras.
           </p>
         </div>
@@ -117,18 +117,18 @@ export default function ProductsListClient({ initialItems }: ProductsListClientP
           <input 
             type="text" 
             placeholder="Buscar productos..." 
-            className="w-full sm:w-72 pl-10 pr-4 py-2 bg-white dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl text-sm focus:ring-2 focus:ring-blue-500 outline-none transition-all shadow-sm"
+            className="w-full sm:w-72 pl-10 pr-4 py-2 bg-background border border-border rounded-xl text-sm focus:ring-2 focus:ring-primary/20 outline-none transition-all shadow-sm"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
           />
-          <Search className="w-4 h-4 absolute left-3 top-2.5 text-zinc-400 group-focus-within:text-blue-500 transition-colors" />
+          <Search className="w-4 h-4 absolute left-3 top-2.5 text-muted-foreground group-focus-within:text-primary transition-colors" />
         </div>
       </div>
 
-      <div className="bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-200 dark:border-zinc-800 shadow-xl shadow-zinc-200/50 dark:shadow-none overflow-hidden">
+      <div className="bg-card rounded-2xl border border-border shadow-sm hover:shadow-md transition-all duration-300 overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-sm text-left">
-            <thead className="text-xs font-semibold text-zinc-500 dark:text-zinc-400 uppercase bg-zinc-50/50 dark:bg-zinc-800/50 border-b border-zinc-200 dark:border-zinc-800">
+            <thead className="text-xs font-semibold text-muted-foreground uppercase bg-muted/50 border-b border-border">
               <tr>
                 <th className="px-6 py-4">Producto</th>
                 <th className="px-6 py-4">Factura</th>
@@ -137,7 +137,7 @@ export default function ProductsListClient({ initialItems }: ProductsListClientP
                 <th className="px-6 py-4 text-right">Total</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-zinc-100 dark:divide-zinc-800">
+            <tbody className="divide-y divide-border">
               {filteredItems.length > 0 ? (
                 filteredItems.map((item) => {
                   const color = getProductColor(item.description);
@@ -145,7 +145,7 @@ export default function ProductsListClient({ initialItems }: ProductsListClientP
                   return (
                     <tr 
                       key={item.id} 
-                      className="hover:bg-zinc-50/80 dark:hover:bg-zinc-800/50 transition-colors cursor-pointer group"
+                      className="hover:bg-accent/50 transition-colors cursor-pointer group"
                       onClick={() => setSelectedProduct(item.description)}
                     >
                       <td className="px-6 py-4">
@@ -153,17 +153,17 @@ export default function ProductsListClient({ initialItems }: ProductsListClientP
                           {item.description}
                         </div>
                       </td>
-                      <td className="px-6 py-4 text-slate-500 dark:text-zinc-400 text-xs">
+                      <td className="px-6 py-4 text-muted-foreground text-xs">
                         <span className="line-clamp-1 max-w-[150px]" title={item.invoices?.filename}>
                           {item.invoices?.filename}
                         </span>
                       </td>
-                      <td className="px-6 py-4 text-right text-slate-600 dark:text-zinc-300 font-mono">
+                      <td className="px-6 py-4 text-right text-muted-foreground font-mono">
                         {item.quantity}
                       </td>
                       <td className="px-6 py-4 text-right">
                          <div className="flex flex-col items-end gap-1">
-                           <span className="font-mono text-slate-700 dark:text-zinc-200">
+                           <span className="font-mono text-foreground">
                              ${Number(item.unit_price).toFixed(2)}
                            </span>
                            
@@ -182,7 +182,7 @@ export default function ProductsListClient({ initialItems }: ProductsListClientP
                            )}
                          </div>
                       </td>
-                      <td className="px-6 py-4 text-right font-semibold text-slate-900 dark:text-zinc-100 font-mono">
+                      <td className="px-6 py-4 text-right font-semibold text-foreground font-mono">
                         ${Number(item.total_price).toFixed(2)}
                       </td>
                     </tr>
@@ -190,9 +190,9 @@ export default function ProductsListClient({ initialItems }: ProductsListClientP
                 })
               ) : (
                 <tr>
-                  <td colSpan={5} className="px-6 py-12 text-center text-slate-500 dark:text-zinc-400">
+                  <td colSpan={5} className="px-6 py-12 text-center text-muted-foreground">
                     <div className="flex flex-col items-center gap-2">
-                      <Search className="w-8 h-8 text-zinc-300 dark:text-zinc-600" />
+                      <Search className="w-8 h-8 text-muted-foreground/50" />
                       <p>No se encontraron productos</p>
                     </div>
                   </td>

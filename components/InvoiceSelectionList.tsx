@@ -17,6 +17,7 @@ export default function InvoiceSelectionList({ invoices }: InvoiceSelectionListP
   const [isProcessing, setIsProcessing] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const [isSelectionMode, setIsSelectionMode] = useState(false);
 
   // Filter invoices based on search query
   const filteredInvoices = invoices.filter(inv => 
@@ -118,30 +119,48 @@ export default function InvoiceSelectionList({ invoices }: InvoiceSelectionListP
       />
       <div className="space-y-4">
       {/* Search Bar */}
-      <div className="relative">
-        <input 
-          type="text" 
-          placeholder="Buscar facturas..." 
-          value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
-          className="w-full pl-10 pr-4 py-2 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all"
-        />
-        <svg xmlns="http://www.w3.org/2000/svg" className="absolute left-3 top-2.5 w-4 h-4 text-zinc-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-        </svg>
+      {/* Search Bar & Selection Toggle */}
+      <div className="flex items-center gap-4">
+        <div className="relative flex-1">
+          <input 
+            type="text" 
+            placeholder="Buscar facturas..." 
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="w-full pl-10 pr-4 py-2 bg-background border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all"
+          />
+          <svg xmlns="http://www.w3.org/2000/svg" className="absolute left-3 top-2.5 w-4 h-4 text-muted-foreground" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+          </svg>
+        </div>
+        <button
+          onClick={() => {
+            if (isSelectionMode) setSelectedIds([]);
+            setIsSelectionMode(!isSelectionMode);
+          }}
+          className={`
+            px-4 py-2 text-sm font-medium rounded-lg transition-colors border
+            ${isSelectionMode 
+              ? 'bg-muted text-foreground border-border hover:bg-muted/80' 
+              : 'bg-background text-primary border-transparent hover:bg-muted/50 hover:border-border'
+            }
+          `}
+        >
+          {isSelectionMode ? 'Cancelar' : 'Seleccionar'}
+        </button>
       </div>
 
       {/* Bulk Actions Header */}
-      {filteredInvoices.length > 0 && (
-        <div className="flex items-center justify-between bg-zinc-50 dark:bg-zinc-800/50 p-3 rounded-lg border border-zinc-100 dark:border-zinc-800">
+      {isSelectionMode && filteredInvoices.length > 0 && (
+        <div className="flex items-center justify-between bg-muted/50 p-3 rounded-lg border border-border">
           <div className="flex items-center gap-3">
             <input 
               type="checkbox"
-              className="w-4 h-4 rounded border-zinc-300 text-blue-600 focus:ring-blue-500"
+              className="w-4 h-4 rounded border-input text-primary focus:ring-primary"
               checked={selectedIds.length > 0 && selectedIds.length === filteredInvoices.length}
               onChange={toggleSelectAll}
             />
-            <span className="text-sm text-zinc-600 dark:text-zinc-300 font-medium">
+            <span className="text-sm text-foreground font-medium">
               {selectedIds.length} seleccionada{selectedIds.length !== 1 ? 's' : ''}
             </span>
           </div>
@@ -153,8 +172,8 @@ export default function InvoiceSelectionList({ invoices }: InvoiceSelectionListP
               className={`
                 px-4 py-2 text-sm font-medium rounded-md transition-all
                 ${selectedIds.length > 0 && !isProcessing
-                  ? 'bg-red-50 text-red-600 hover:bg-red-100 border border-red-200'
-                  : 'bg-zinc-200 text-zinc-400 cursor-not-allowed dark:bg-zinc-700 dark:text-zinc-500'
+                  ? 'bg-destructive/10 text-destructive hover:bg-destructive/20 border border-destructive/20'
+                  : 'bg-muted text-muted-foreground cursor-not-allowed'
                 }
               `}
             >
@@ -167,8 +186,8 @@ export default function InvoiceSelectionList({ invoices }: InvoiceSelectionListP
               className={`
                 px-4 py-2 text-sm font-medium rounded-md transition-all
                 ${analyzableCount > 0 && !isProcessing
-                  ? 'bg-blue-600 text-white hover:bg-blue-700 shadow-sm'
-                  : 'bg-zinc-200 text-zinc-400 cursor-not-allowed dark:bg-zinc-700 dark:text-zinc-500'
+                  ? 'bg-primary text-primary-foreground hover:bg-primary/90 shadow-sm'
+                  : 'bg-muted text-muted-foreground cursor-not-allowed'
                 }
               `}
             >
@@ -179,9 +198,9 @@ export default function InvoiceSelectionList({ invoices }: InvoiceSelectionListP
       )}
 
       {/* List */}
-      <div className="bg-white dark:bg-zinc-900 rounded-xl shadow-sm border border-zinc-200 dark:border-zinc-800 overflow-hidden divide-y divide-zinc-100 dark:divide-zinc-800">
+      <div className="bg-card rounded-xl shadow-sm hover:shadow-md transition-shadow duration-300 border border-border overflow-hidden divide-y divide-border">
         {filteredInvoices.length === 0 ? (
-          <div className="p-8 text-center text-slate-500 dark:text-zinc-400">
+          <div className="p-8 text-center text-muted-foreground">
             {searchQuery ? 'No se encontraron facturas con ese nombre.' : 'No hay facturas subidas todavía.'}
           </div>
         ) : (
@@ -195,20 +214,23 @@ export default function InvoiceSelectionList({ invoices }: InvoiceSelectionListP
                 className={`
                   flex group transition-colors duration-200
                   ${isAnalyzed 
-                    ? 'bg-zinc-50/50 dark:bg-zinc-900/50 hover:bg-zinc-100/50' 
-                    : 'bg-white dark:bg-black'
+                    ? 'bg-muted/30 hover:bg-muted/50' 
+                    : 'bg-card'
                   }
                 `}
               >
                  {/* Selection Checkbox Wrapper - ALWAYS VISIBLE NOW */}
-                 <div className="flex items-center pl-4 py-4 transition-colors border-b border-zinc-100 dark:border-zinc-800 last:border-0">
-                   <input 
-                     type="checkbox"
-                     className="w-4 h-4 rounded border-zinc-300 text-blue-600 focus:ring-blue-500 cursor-pointer"
-                     checked={isSelected}
-                     onChange={() => toggleSelection(invoice.id)}
-                   />
-                 </div>
+                 {/* Selection Checkbox Wrapper */}
+                 {isSelectionMode && (
+                   <div className="flex items-center pl-4 py-4 transition-colors border-b border-border last:border-0 animate-in fade-in zoom-in duration-200">
+                     <input 
+                       type="checkbox"
+                       className="w-4 h-4 rounded border-input text-primary focus:ring-primary cursor-pointer"
+                       checked={isSelected}
+                       onChange={() => toggleSelection(invoice.id)}
+                     />
+                   </div>
+                 )}
                  
                  {/* InvoiceRow Content */}
                  <div className={`flex-1 min-w-0 ${isAnalyzed ? 'opacity-75 grayscale-[0.3] hover:grayscale-0 transition-all' : ''}`}>
