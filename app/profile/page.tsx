@@ -1,16 +1,12 @@
-import { createClient } from "@/utils/supabase/server";
-import { redirect } from "next/navigation";
-import UserProfile from "@/components/UserProfile";
+import { getSession } from '@/lib/auth';
+import { redirect } from 'next/navigation';
+import UserProfile from '@/components/UserProfile';
 
 export default async function ProfilePage() {
-  const supabase = await createClient();
-
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getSession();
 
   if (!user) {
-    return redirect("/login");
+    return redirect('/login');
   }
 
   return (
@@ -19,3 +15,4 @@ export default async function ProfilePage() {
     </div>
   );
 }
+

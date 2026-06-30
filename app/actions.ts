@@ -1,34 +1,47 @@
 'use server';
 
-import { createClient } from '@/utils/supabase/server';
-// We still need admin for specific background tasks if RLS is too strict, 
-// but primarily we should use the user's client. 
-// For now, keeping admin client init for analyzeInvoice fallback if needed, 
-// but ideally we switch to user client.
-
-import { createClient as createAdminClient } from '@supabase/supabase-js';
-
-const supabaseAdmin = createAdminClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-);
-
 import { redirect } from 'next/navigation';
 import { revalidatePath } from 'next/cache';
+import { query } from '@/lib/db';
+import {
+  getSession,
+  hashPassword,
+  verifyPassword,
+  clearSessionCookie,
+} from '@/lib/auth';
+import OpenAI from 'openai';
+import crypto from 'crypto';
 
-export async function signOut() {
-  const supabase = await createClient();
-  await supabase.auth.signOut();
-  return redirect('/login');
+// Polyfill para pdf-parse en entornos de Node (Next.js)
+if (typeof globalThis !== 'undefined' && !(globalThis as any).DOMMatrix) {
+  (globalThis as any).DOMMatrix = class DOMMatrix {};
 }
+const pdfParse = require('pdf-parse');
+
+import { writeFile, unlink, readFile, mkdir } from 'fs/promises';
+import path from 'path';
+
+// ─── Types ────────────────────────────────────────────────────────────────────
 
 export type ActionState = {
   error: string | null;
   success: string | null;
 };
 
-export async function changePassword(prevState: ActionState | null, formData: FormData): Promise<ActionState> {
-  const supabase = await createClient();
+// ─── Auth ─────────────────────────────────────────────────────────────────────
+
+export async function signOut() {
+  await clearSessionCookie();
+  return redirect('/login');
+}
+
+export async function changePassword(
+  prevState: ActionState | null,
+  formData: FormData
+): Promise<ActionState> {
+  const user = await getSession();
+  if (!user) return { error: 'No autenticado.', success: null };
+
   const password = formData.get('password') as string;
   const confirmPassword = formData.get('confirmPassword') as string;
 
@@ -44,140 +57,266 @@ export async function changePassword(prevState: ActionState | null, formData: Fo
     return { error: 'La contraseña debe tener al menos 6 caracteres.', success: null };
   }
 
-  const { error } = await supabase.auth.updateUser({ password: password });
-
-  if (error) {
-    console.error('Error updating password:', error);
-    return { error: error.message, success: null };
-  }
+  const passwordHash = await hashPassword(password);
+  await query('UPDATE users SET password_hash = $1 WHERE id = $2', [
+    passwordHash,
+    user.id,
+  ]);
 
   revalidatePath('/profile');
   return { success: 'Contraseña actualizada correctamente.', error: null };
 }
 
-export async function uploadPdf(formData: FormData) {
-  const supabase = await createClient();
-  
-  // Check Auth
-  const { data: { user }, error: authError } = await supabase.auth.getUser();
-  if (authError || !user) {
-    throw new Error('Debes iniciar sesión para subir facturas.');
-  }
+// ─── Settings ─────────────────────────────────────────────────────────────────
 
-  const file = formData.get('file') as File;
-  
-  if (!file) {
-    throw new Error('No se ha proporcionado ningún archivo');
-  }
+export async function getUserSettings() {
+  const user = await getSession();
+  if (!user) return null;
+  const result = await query('SELECT ai_url, ai_model FROM users WHERE id = $1', [user.id]);
+  return result.rows[0] || null;
+}
 
-  // 1. Upload file to Supabase Storage
-  // Create a unique file path: uploads/USERID/TIMESTAMP_FILENAME to isolate files per folder
-  const filePath = `uploads/${user.id}/${Date.now()}_${file.name.replace(/\s+/g, '_')}`;
-  
-  const { data: storageData, error: storageError } = await supabase
-    .storage
-    .from('facturas')
-    .upload(filePath, file);
-
-  if (storageError) {
-    console.error('Storage Error:', storageError);
-    throw new Error('Error subiendo el archivo a Storage');
-  }
-
-  // 2. Get Public URL
-  const { data: { publicUrl } } = supabase
-    .storage
-    .from('facturas')
-    .getPublicUrl(storageData.path);
-
-  // 3. Insert record into Database
-  const { error: dbError } = await supabase
-    .from('invoices')
-    .insert({
-      filename: file.name,
-      file_url: publicUrl,
-      user_id: user.id // IMPORTANT: User ID
-    });
-
-  if (dbError) {
-    console.error('Database Error:', dbError);
-    // Optional: Cleanup stored file if DB insert fails
-    await supabase.storage.from('facturas').remove([storageData.path]);
-    throw new Error('Error guardando en la base de datos');
-  }
-
+export async function updateUserSettings(aiUrl: string, aiModel: string) {
+  const user = await getSession();
+  if (!user) throw new Error('No autenticado');
+  await query('UPDATE users SET ai_url = $1, ai_model = $2 WHERE id = $3', [aiUrl, aiModel, user.id]);
+  revalidatePath('/settings');
   return { success: true };
 }
 
-export async function getInvoices() {
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
+// ─── Invoices ─────────────────────────────────────────────────────────────────
 
-  if (!user) return [];
+/** Directorio base donde se almacenan los PDFs */
+const UPLOADS_DIR = path.join(process.cwd(), 'uploads');
 
-  const { data, error } = await supabase
-    .from('invoices')
-    .select('*')
-    .eq('user_id', user.id) // Filter by user explicitly (redundant if RLS enabled, but safe)
-    .order('created_at', { ascending: false });
+export async function uploadPdf(formData: FormData) {
+  const user = await getSession();
+  if (!user) throw new Error('Debes iniciar sesión para subir facturas.');
 
-  if (error) {
-    console.error('Error fetching invoices:', error);
-    return [];
+  const file = formData.get('file') as File;
+  if (!file) throw new Error('No se ha proporcionado ningún archivo.');
+
+  // Validación de tipo (PDF o Imágenes comunes)
+  const validTypes = ['application/pdf', 'image/jpeg', 'image/png', 'image/webp'];
+  if (!validTypes.includes(file.type)) {
+    throw new Error('Tipo de archivo no soportado. Sube un PDF, JPG, PNG o WebP.');
   }
 
-  return data;
+  // Validación de tamaño (Max 10MB)
+  const MAX_SIZE = 10 * 1024 * 1024;
+  if (file.size > MAX_SIZE) {
+    throw new Error('El archivo es demasiado grande. El límite es 10MB.');
+  }
+
+  const bytes = await file.arrayBuffer();
+  const buffer = Buffer.from(bytes);
+
+  // Calcular hash para evitar duplicados
+  const hash = crypto.createHash('sha256').update(buffer).digest('hex');
+  
+  // Verificar duplicados en base de datos
+  const existing = await query('SELECT id FROM invoices WHERE user_id = $1 AND file_hash = $2', [user.id, hash]);
+  if (existing.rows.length > 0) {
+    throw new Error('Este archivo ya ha sido subido anteriormente.');
+  }
+
+  // Crear directorio del usuario si no existe
+  const userDir = path.join(UPLOADS_DIR, String(user.id));
+  await mkdir(userDir, { recursive: true });
+
+  // Guardar el archivo en disco
+  const safeName = file.name.replace(/\s+/g, '_');
+  const filename = `${Date.now()}_${safeName}`;
+  const filePath = path.join(userDir, filename);
+
+  await writeFile(filePath, buffer);
+
+  // Ruta relativa para almacenar en DB (relativa al directorio uploads/)
+  const relPath = path.join(String(user.id), filename);
+
+  // Insertar en la DB
+  const insertResult = await query<{ id: number }>(
+    'INSERT INTO invoices (user_id, filename, file_path, file_hash) VALUES ($1, $2, $3, $4) RETURNING id',
+    [user.id, file.name, relPath, hash]
+  );
+
+  const invoiceId = insertResult.rows[0].id;
+
+  revalidatePath('/');
+  return { success: true, invoiceId, filePath: relPath };
 }
 
-import { GoogleGenerativeAI } from '@google/generative-ai';
+export async function getInvoices() {
+  const user = await getSession();
+  if (!user) return [];
 
-// Initialize Gemini
-// Note: This relies on GEMINI_API_KEY being set in .env.local
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '');
+  const result = await query(
+    'SELECT * FROM invoices WHERE user_id = $1 ORDER BY created_at DESC',
+    [user.id]
+  );
 
-export async function analyzeInvoice(invoiceId: number, fileUrl: string) {
-  // We use admin for background processing logic to ensure it runs even if RLS is tricky for updates
-  // BUT we should verify ownership first if possible. 
-  // For MVP, we assume if the user triggered it via UI, they have access.
-  // Ideally, use authenticated client here too if passed, or just Admin is fine for the heavy lifting 
-  // as long as we don't return data to the wrong user.
-  
+  return result.rows;
+}
+
+export async function deleteInvoice(invoiceId: number, filePath: string) {
+  const user = await getSession();
+  if (!user) throw new Error('Usuario no autenticado');
+
+  // Verificar propiedad antes de borrar
+  const check = await query(
+    'SELECT id FROM invoices WHERE id = $1 AND user_id = $2',
+    [invoiceId, user.id]
+  );
+  if (check.rows.length === 0) throw new Error('Factura no encontrada');
+
+  // Borrar archivo del disco
   try {
-    if (!process.env.GEMINI_API_KEY) {
-      throw new Error('GEMINI_API_KEY no está configurada');
+    const absolutePath = path.join(UPLOADS_DIR, filePath);
+    await unlink(absolutePath);
+  } catch (e) {
+    console.error('Error borrando archivo del disco:', e);
+    // No interrumpir si el archivo ya no existe
+  }
+
+  // Borrar de la DB (cascade elimina invoice_items)
+  await query('DELETE FROM invoices WHERE id = $1 AND user_id = $2', [
+    invoiceId,
+    user.id,
+  ]);
+
+  revalidatePath('/');
+  return { success: true };
+}
+
+export async function updateInvoiceItem(
+  itemId: number,
+  updates: {
+    description?: string;
+    quantity?: number;
+    unit_price?: number;
+    total_price?: number;
+  }
+) {
+  const user = await getSession();
+  if (!user) throw new Error('No autenticado');
+
+  // Verificar que el ítem pertenece al usuario mediante JOIN
+  const check = await query(
+    `SELECT ii.id FROM invoice_items ii
+     JOIN invoices inv ON inv.id = ii.invoice_id
+     WHERE ii.id = $1 AND inv.user_id = $2`,
+    [itemId, user.id]
+  );
+  if (check.rows.length === 0) throw new Error('Ítem no encontrado');
+
+  await query(
+    `UPDATE invoice_items
+     SET description = COALESCE($1, description),
+         quantity    = COALESCE($2, quantity),
+         unit_price  = COALESCE($3, unit_price),
+         total_price = COALESCE($4, total_price)
+     WHERE id = $5`,
+    [
+      updates.description ?? null,
+      updates.quantity ?? null,
+      updates.unit_price ?? null,
+      updates.total_price ?? null,
+      itemId,
+    ]
+  );
+
+  revalidatePath('/');
+  return { success: true };
+}
+
+export async function getAllInvoiceItems() {
+  const user = await getSession();
+  if (!user) return [];
+
+  const result = await query(
+    `SELECT ii.*, inv.filename, inv.file_path, inv.created_at AS invoice_created_at, inv.invoice_date, inv.supplier
+     FROM invoice_items ii
+     JOIN invoices inv ON inv.id = ii.invoice_id
+     WHERE inv.user_id = $1
+     ORDER BY ii.id DESC`,
+    [user.id]
+  );
+
+  return result.rows;
+}
+
+// ─── AI Analysis ──────────────────────────────────────────────────────────────
+
+export async function analyzeInvoice(invoiceId: number, filePath: string) {
+  const user = await getSession();
+  if (!user) throw new Error('No autenticado');
+
+  try {
+    const userResult = await query('SELECT ai_url, ai_model FROM users WHERE id = $1', [user.id]);
+    const userSettings = userResult.rows[0];
+    const localAiUrl = userSettings?.ai_url || process.env.LOCAL_AI_URL;
+    const localAiModel = userSettings?.ai_model || process.env.LOCAL_AI_MODEL || 'google/gemma-4-e4b';
+
+    if (!localAiUrl) {
+      throw new Error('No hay URL de IA configurada. Por favor, configúrala en Ajustes.');
     }
 
-    // 0. Check if already analyzed (Using Admin to bypass RLS if triggered by server component)
-    const { data: invoiceCheck } = await supabaseAdmin
-      .from('invoices')
-      .select('status')
-      .eq('id', invoiceId)
-      .single();
+    // Verificar propiedad y estado
+    const invoiceResult = await query(
+      'SELECT id, status FROM invoices WHERE id = $1 AND user_id = $2',
+      [invoiceId, user.id]
+    );
+    const invoice = invoiceResult.rows[0];
+    if (!invoice) throw new Error('Factura no encontrada');
+    if (invoice.status === 'analyzed') throw new Error('Esta factura ya ha sido analizada.');
 
-    if (invoiceCheck?.status === 'analyzed') {
-      throw new Error('Esta factura ya ha sido analizada.');
+    // Leer archivo del disco
+    const absolutePath = path.join(UPLOADS_DIR, filePath);
+    const fileBuffer = await readFile(absolutePath);
+    const ext = path.extname(filePath).toLowerCase();
+
+    let userMessageContent: any[] = [];
+    
+    if (ext === '.pdf') {
+      const pdfData = await pdfParse(fileBuffer);
+      userMessageContent = [
+        { type: "text", text: "Aquí tienes el texto extraído del PDF de la factura:\n\n" + pdfData.text }
+      ];
+    } else {
+      let mimeType = 'image/jpeg';
+      if (ext === '.png') mimeType = 'image/png';
+      else if (ext === '.webp') mimeType = 'image/webp';
+      
+      const base64Data = fileBuffer.toString('base64');
+      userMessageContent = [
+        { type: "text", text: "Aquí tienes la imagen de la factura." },
+        { type: "image_url", image_url: { url: `data:${mimeType};base64,${base64Data}` } }
+      ];
     }
 
-    // 1. Fetch the PDF file
-    const response = await fetch(fileUrl);
-    const arrayBuffer = await response.arrayBuffer();
-    const base64Data = Buffer.from(arrayBuffer).toString('base64');
-
-    // 2. Prepare Gemini Model
-    const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '');
-    const model = genAI.getGenerativeModel({ model: 'gemini-flash-latest' });
+    const openai = new OpenAI({ 
+      baseURL: localAiUrl, 
+      apiKey: 'lm-studio' 
+    });
 
     const prompt = `
       Analiza esta factura e identifica:
       1. El nombre del PROVEEDOR (ej: Mercadona, Endesa, Farmacia X). Si no es obvio, pon "Desconocido".
-      2. Los ítems comprados.
+      2. La fecha de la factura en formato YYYY-MM-DD. Si no hay, pon null.
+      3. El subtotal, los impuestos (IVA/tax) y el total final. Si no están claros, pon null o 0.
+      4. Los ítems comprados, asignando a cada uno una de estas categorías: "Alimentación", "Hogar", "Tecnología", "Transporte", "Salud", "Servicios" u "Otros".
 
       Devuélveme SOLO un JSON válido con esta estructura:
       {
         "supplier": "Nombre Proveedor",
+        "invoice_date": "2023-12-01",
+        "subtotal": 100.00,
+        "tax": 21.00,
+        "total": 121.00,
         "items": [
           {
             "description": "Nombre del producto",
+            "category": "Alimentación",
             "quantity": 1,
             "unit_price": 10.50,
             "total_price": 10.50
@@ -186,159 +325,91 @@ export async function analyzeInvoice(invoiceId: number, fileUrl: string) {
       }
       No incluyas markdown, ni comillas extra, solo el objeto JSON crudo.
     `;
-
-    // 3. Generate Content
-    const result = await model.generateContent([
-      prompt,
-      {
-        inlineData: {
-          data: base64Data,
-          mimeType: 'application/pdf',
-        },
-      },
-    ]);
-
-    const text = result.response.text();
     
-    // Clean markdown if present (```json ... ```)
-    const jsonStr = text.replace(/```json/g, '').replace(/```/g, '').trim();
-    const data = JSON.parse(jsonStr);
+    userMessageContent.unshift({ type: "text", text: prompt });
+
+    const result = await openai.chat.completions.create({
+      model: localAiModel,
+      messages: [
+        { role: 'user', content: userMessageContent }
+      ],
+      temperature: 0.1,
+    });
+
+    let text = result.choices[0].message.content || '';
     
-    // Compatibility: Handle if AI returns just array (fallback) or new object
-    const items = Array.isArray(data) ? data : data.items;
-    const supplier = Array.isArray(data) ? 'Desconocido' : (data.supplier || 'Desconocido');
-
-    // 4. Save to Database
-    // Using Admin to ensure status update success regardless of complex RLS
-    const { error: updateError } = await supabaseAdmin
-      .from('invoices')
-      .update({ 
-        status: 'analyzed',
-        supplier: supplier
-      })
-      .eq('id', invoiceId);
-
-    if (updateError) {
-      console.error('Error updating invoice status:', JSON.stringify(updateError, null, 2));
-      throw new Error(`Error updating status: ${updateError.message}`);
+    const firstBrace = text.indexOf('{');
+    const lastBrace = text.lastIndexOf('}');
+    
+    if (firstBrace === -1 || lastBrace === -1) {
+      throw new Error('El modelo no devolvió un objeto JSON.');
+    }
+    
+    const jsonStr = text.substring(firstBrace, lastBrace + 1);
+    
+    let data;
+    try {
+      data = JSON.parse(jsonStr);
+    } catch (e: any) {
+      throw new Error('El JSON devuelto es inválido: ' + e.message);
     }
 
-    // Insert items using Admin client
-    const itemsToInsert = items.map((item: any) => ({
-      invoice_id: invoiceId,
-      description: item.description,
-      quantity: item.quantity,
-      unit_price: item.unit_price,
-      total_price: item.total_price
-    }));
+    const items = Array.isArray(data) ? data : data.items;
+    const supplier = Array.isArray(data) ? 'Desconocido' : (data.supplier || 'Desconocido');
+    const invoiceDate = data.invoice_date || null;
+    const subtotal = data.subtotal || null;
+    const tax = data.tax || null;
+    const total = data.total || null;
 
-    const { error: insertError } = await supabaseAdmin
-      .from('invoice_items')
-      .insert(itemsToInsert);
+    // Actualizar factura
+    await query(
+      'UPDATE invoices SET status = $1, supplier = $2, invoice_date = $3, subtotal = $4, tax = $5, total = $6 WHERE id = $7',
+      ['analyzed', supplier, invoiceDate, subtotal, tax, total, invoiceId]
+    );
 
-    if (insertError) throw insertError;
-
-    return { success: true };
-
-
-  } catch (error) {
-    console.error('Error analyzing invoice:', error);
-    
-    // Mark as error
-    await supabaseAdmin
-      .from('invoices')
-      .update({ status: 'error' })
-      .eq('id', invoiceId);
-      
-    throw error;
-  }
-}
-
-export async function deleteInvoice(invoiceId: number, fileUrl: string) {
-  const supabase = await createClient();
-  // Check auth implicitly via RLS or explicit check
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) throw new Error('Usuario no autenticado');
-
-  try {
-    // 1. Delete from Storage
-    // Extract path. URL format: .../uploads/USER_ID/TIME_NAME or .../uploads/TIME_NAME (old)
-    const storagePath = fileUrl.split('/facturas/')[1];
-
-    if (storagePath) {
-      const { error: storageError } = await supabase
-        .storage
-        .from('facturas')
-        .remove([storagePath]);
-
-      if (storageError) {
-        console.error('Error deleting file from storage:', storageError);
+    // Insertar ítems
+    if (items && Array.isArray(items)) {
+      for (const item of items) {
+        await query(
+          `INSERT INTO invoice_items (invoice_id, description, quantity, unit_price, total_price, category)
+           VALUES ($1, $2, $3, $4, $5, $6)`,
+          [invoiceId, item.description, item.quantity, item.unit_price, item.total_price, item.category || 'Otros']
+        );
       }
     }
 
-    // 2. Delete from Database
-    const { error: dbError } = await supabase
-      .from('invoices')
-      .delete()
-      .eq('id', invoiceId)
-      .eq('user_id', user.id); // Validating ownership
-
-    if (dbError) throw dbError;
-
+    revalidatePath('/');
     return { success: true };
 
-  } catch (error) {
-    console.error('Error deleting invoice:', error);
-    throw error;
+  } catch (error: any) {
+    console.error('Error analyzing invoice:', error);
+
+    // Marcar como error
+    await query('UPDATE invoices SET status = $1 WHERE id = $2', ['error', invoiceId]);
+    return { success: false, error: error.message || 'Error desconocido' };
   }
 }
 
-export async function updateInvoiceItem(itemId: number, updates: { description?: string; quantity?: number; unit_price?: number; total_price?: number }) {
-  const supabase = await createClient();
-  try {
-    // We rely on RLS on 'invoice_items' which should check if the parent invoice belongs to user.
-    // If RLS is hard to set up for JOINs, we might need a two-step check here.
-    // However, if we don't have RLS, we should verify. 
-    // For MVP with RLS pending, we can try using the 'supabase' (auth) client.
-    
-    // NOTE: RLS on related tables (invoice_items) often requires using a functions or correct policies.
-    // Assuming simple RLS:
-    const { error } = await supabase
-      .from('invoice_items')
-      .update(updates)
-      .eq('id', itemId);
+export async function reanalyzeInvoice(invoiceId: number, filePath: string) {
+  const user = await getSession();
+  if (!user) throw new Error('No autenticado');
 
-    if (error) throw error;
-    return { success: true };
-  } catch (error) {
-    console.error('Error updating invoice item:', error);
-    throw error;
-  }
-}
-
-export async function getAllInvoiceItems() {
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return [];
-
-  const { data, error } = await supabase
-    .from('invoice_items')
-    .select(`
-      *,
-      invoices!inner (
-        filename,
-        created_at,
-        file_url,
-        user_id
-      )
-    `)
-    .eq('invoices.user_id', user.id) // Filter by user via join
-    .order('id', { ascending: false });
-
-  if (error) {
-    console.error('Error fetching invoice items:', JSON.stringify(error, null, 2));
-    return [];
+  // Verificar propiedad
+  const invoiceResult = await query(
+    'SELECT id FROM invoices WHERE id = $1 AND user_id = $2',
+    [invoiceId, user.id]
+  );
+  
+  if (invoiceResult.rows.length === 0) {
+    throw new Error('Factura no encontrada o no autorizada');
   }
 
-  return data;
+  // Eliminar los ítems existentes
+  await query('DELETE FROM invoice_items WHERE invoice_id = $1', [invoiceId]);
+  
+  // Restablecer el estado para que la lógica de analyzeInvoice funcione correctamente
+  await query('UPDATE invoices SET status = $1, subtotal = null, tax = null, total = null, invoice_date = null WHERE id = $2', ['pending', invoiceId]);
+
+  // Llamar al análisis estándar
+  return analyzeInvoice(invoiceId, filePath);
 }

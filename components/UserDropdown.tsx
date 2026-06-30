@@ -2,12 +2,12 @@
 
 import { useState, useRef, useEffect } from "react";
 import Link from "next/link";
-import { User } from "@supabase/supabase-js";
+import { type SessionUser } from '@/lib/auth';
 import { signOut } from "@/app/actions";
 import { motion, AnimatePresence } from "framer-motion";
-import { User as UserIcon, LogOut, KeyRound, ChevronDown } from "lucide-react";
+import { User as UserIcon, LogOut, KeyRound, ChevronDown, Settings } from "lucide-react";
 
-export default function UserDropdown({ user }: { user: User }) {
+export default function UserDropdown({ user }: { user: SessionUser }) {
   const [isOpen, setIsOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
@@ -59,6 +59,15 @@ export default function UserDropdown({ user }: { user: User }) {
             >
               <KeyRound className="w-4 h-4" />
               Cambiar Contraseña
+            </Link>
+
+            <Link
+              href="/settings"
+              onClick={() => setIsOpen(false)}
+              className="flex items-center gap-2 px-3 py-2 text-sm text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-lg transition-colors"
+            >
+              <Settings className="w-4 h-4" />
+              Configuración IA
             </Link>
 
             <div className="h-px bg-zinc-100 dark:bg-zinc-800 my-1" />

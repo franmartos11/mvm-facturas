@@ -2,7 +2,7 @@
 
 import { useActionState } from "react";
 import { changePassword } from "@/app/actions";
-import { User } from "@supabase/supabase-js";
+import { type SessionUser } from '@/lib/auth';
 import { Loader2, ShieldCheck, Lock } from "lucide-react";
 import { motion } from "framer-motion";
 
@@ -11,7 +11,7 @@ const initialState = {
   success: null as string | null,
 };
 
-export default function UserProfile({ user }: { user: User }) {
+export default function UserProfile({ user }: { user: SessionUser }) {
   const [state, formAction, isPending] = useActionState(changePassword, initialState);
 
   return (

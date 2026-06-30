@@ -31,10 +31,10 @@ export function PdfUpload({ onFilesSelect }: PdfUploadProps) {
   const validateAndAddFiles = (files: FileList | File[]) => {
     const validFiles: File[] = [];
     Array.from(files).forEach(file => {
-      if (file.type === 'application/pdf') {
+      if (file.type === 'application/pdf' || file.type.startsWith('image/')) {
         validFiles.push(file);
       } else {
-        alert(`El archivo ${file.name} no es un PDF y fue ignorado.`);
+        alert(`El archivo ${file.name} no es un PDF ni una imagen, y fue ignorado.`);
       }
     });
 
@@ -96,7 +96,7 @@ export function PdfUpload({ onFilesSelect }: PdfUploadProps) {
           type="file"
           ref={fileInputRef}
           onChange={handleFileInput}
-          accept=".pdf"
+          accept=".pdf,image/png,image/jpeg,image/jpg"
           multiple
           className="hidden"
         />
@@ -112,14 +112,14 @@ export function PdfUpload({ onFilesSelect }: PdfUploadProps) {
           </div>
           <div>
             <p className="text-lg font-medium text-slate-900">
-              {isDragging ? '¡Suelta los PDFs aquí!' : 'Sube tus facturas PDF'}
+              {isDragging ? '¡Suelta los archivos aquí!' : 'Sube tus facturas (PDF o Imágenes)'}
             </p>
             <p className="text-sm text-slate-500 mt-1">
               Arrastra y suelta o haz clic para seleccionar múltiples archivos
             </p>
           </div>
           <p className="text-xs text-slate-400">
-            Solo archivos PDF
+            PDF, PNG, JPG
           </p>
         </div>
       </div>

@@ -1,20 +1,35 @@
+import { NextResponse } from 'next/server';
+import type { NextRequest } from 'next/server';
+import { getSessionFromRequest } from '@/lib/auth';
 
-import { type NextRequest } from 'next/server'
-import { updateSession } from '@/utils/supabase/middleware'
+// Rutas públicas que no requieren autenticación
+const PUBLIC_PATHS = ['/', '/login', '/auth'];
 
 export async function middleware(request: NextRequest) {
-  return await updateSession(request)
+  const { pathname } = request.nextUrl;
+
+  const isPublic = PUBLIC_PATHS.some(
+    (p) => pathname === p || pathname.startsWith(`${p}/`)
+  );
+
+  // Siempre permitir API uploads (la ruta verifica auth internamente)
+  if (pathname.startsWith('/api/uploads')) {
+    return NextResponse.next();
+  }
+
+  const user = await getSessionFromRequest(request);
+
+  if (!user && !isPublic) {
+    const loginUrl = new URL('/login', request.url);
+    return NextResponse.redirect(loginUrl);
+  }
+
+  return NextResponse.next();
 }
 
 export const config = {
   matcher: [
-    /*
-     * Match all request paths except for the ones starting with:
-     * - _next/static (static files)
-     * - _next/image (image optimization files)
-     * - favicon.ico (favicon file)
-     * Feel free to modify this pattern to include more paths.
-     */
     '/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
   ],
-}
+};
+

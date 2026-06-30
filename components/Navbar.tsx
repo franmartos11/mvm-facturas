@@ -1,13 +1,9 @@
 import Link from "next/link";
-import { createClient } from "@/utils/supabase/server";
-import { signOut } from "@/app/actions";
+import { getSession } from "@/lib/auth";
 import UserDropdown from "@/components/UserDropdown";
 
 export default async function Navbar() {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getSession();
 
   return (
     <nav className="w-full flex justify-center border-b border-border h-16 bg-background/80 backdrop-blur-md sticky top-0 z-50">

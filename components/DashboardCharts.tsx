@@ -22,17 +22,17 @@ export default function DashboardCharts({ items }: DashboardChartsProps) {
   const [isOpen, setIsOpen] = useState(false);
 
   // Aggregate data by date
-  const chartData = useMemo(() => {
-    // ... existing logic ...
-    // Note: Re-using existing logic inside useMemo, 
-    // just wrapping the return in a conditional render structure or button
-    if (!items || items.length === 0) return [];
+  const { chartData, topSuppliersData } = useMemo(() => {
+    if (!items || items.length === 0) return { chartData: [], topSuppliersData: [] };
 
     const groupedData: Record<string, number> = {};
+    const supplierData: Record<string, number> = {};
 
     items.forEach((item) => {
-        const dateStr = item.invoices?.created_at; 
+        const dateStr = item.invoice_date || item.invoice_created_at; 
         if (!dateStr) return;
+        
+        // Date aggregation
         const date = new Date(dateStr).toLocaleDateString('es-ES', {
             day: '2-digit',
             month: '2-digit',
@@ -41,9 +41,16 @@ export default function DashboardCharts({ items }: DashboardChartsProps) {
             groupedData[date] = 0;
         }
         groupedData[date] += Number(item.total_price) || 0;
+        
+        // Supplier aggregation
+        const supplier = item.supplier || 'Desconocido';
+        if (!supplierData[supplier]) {
+            supplierData[supplier] = 0;
+        }
+        supplierData[supplier] += Number(item.total_price) || 0;
     });
     
-    return Object.entries(groupedData)
+    const chart = Object.entries(groupedData)
       .map(([name, value]) => ({ name, value }))
       .sort((a, b) => {
          const [dayA, monthA] = a.name.split('/');
@@ -51,6 +58,13 @@ export default function DashboardCharts({ items }: DashboardChartsProps) {
          return (Number(monthA) * 31 + Number(dayA)) - (Number(monthB) * 31 + Number(dayB));
       })
       .slice(-14);
+      
+    const suppliers = Object.entries(supplierData)
+      .map(([name, value]) => ({ name, value }))
+      .sort((a, b) => b.value - a.value)
+      .slice(0, 5);
+
+    return { chartData: chart, topSuppliersData: suppliers };
   }, [items]);
 
   if (chartData.length === 0) return null;
@@ -76,48 +90,100 @@ export default function DashboardCharts({ items }: DashboardChartsProps) {
 
       {isOpen && (
         <div className="p-6 pt-0 animate-in slide-in-from-top-4 fade-in">
-            <p className="text-sm text-muted-foreground mb-6">
-                Evolución del gasto diario en los últimos 14 días.
-            </p>
-            <div className="h-[300px] w-full">
-                <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={chartData}>
-                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="hsl(var(--border))" />
-                    <XAxis 
-                    dataKey="name" 
-                    stroke="hsl(var(--muted-foreground))" 
-                    fontSize={12} 
-                    tickLine={false} 
-                    axisLine={false} 
-                    dy={10}
-                    />
-                    <YAxis 
-                    stroke="hsl(var(--muted-foreground))" 
-                    fontSize={12} 
-                    tickLine={false} 
-                    axisLine={false} 
-                    tickFormatter={(value) => `$${value}`} 
-                    />
-                    <Tooltip 
-                    cursor={{ fill: 'transparent' }}
-                    contentStyle={{ 
-                        backgroundColor: 'hsl(var(--card))', 
-                        borderRadius: '8px', 
-                        border: '1px solid hsl(var(--border))',
-                        boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)',
-                        color: 'hsl(var(--foreground))'
-                    }}
-                    itemStyle={{ color: 'hsl(var(--foreground))' }}
-                    formatter={(value: number) => [`$${value.toFixed(2)}`, 'Gasto Total']}
-                    />
-                    <Bar 
-                    dataKey="value" 
-                    fill="hsl(var(--primary))" 
-                    radius={[4, 4, 0, 0]} 
-                    maxBarSize={50}
-                    />
-                </BarChart>
-                </ResponsiveContainer>
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                <div>
+                    <p className="text-sm font-medium text-foreground mb-4">
+                        Evolución de Gasto (Últimos 14 días)
+                    </p>
+                    <div className="h-[250px] w-full">
+                        <ResponsiveContainer width="100%" height="100%">
+                        <BarChart data={chartData}>
+                            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="hsl(var(--border))" />
+                            <XAxis 
+                            dataKey="name" 
+                            stroke="hsl(var(--muted-foreground))" 
+                            fontSize={12} 
+                            tickLine={false} 
+                            axisLine={false} 
+                            dy={10}
+                            />
+                            <YAxis 
+                            stroke="hsl(var(--muted-foreground))" 
+                            fontSize={12} 
+                            tickLine={false} 
+                            axisLine={false} 
+                            tickFormatter={(value) => `$${value}`} 
+                            />
+                            <Tooltip 
+                            cursor={{ fill: 'transparent' }}
+                            contentStyle={{ 
+                                backgroundColor: 'hsl(var(--card))', 
+                                borderRadius: '8px', 
+                                border: '1px solid hsl(var(--border))',
+                                boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)',
+                                color: 'hsl(var(--foreground))'
+                            }}
+                            itemStyle={{ color: 'hsl(var(--foreground))' }}
+                            formatter={(value: number) => [`$${value.toFixed(2)}`, 'Gasto']}
+                            />
+                            <Bar 
+                            dataKey="value" 
+                            fill="hsl(var(--primary))" 
+                            radius={[4, 4, 0, 0]} 
+                            maxBarSize={50}
+                            />
+                        </BarChart>
+                        </ResponsiveContainer>
+                    </div>
+                </div>
+                
+                <div>
+                    <p className="text-sm font-medium text-foreground mb-4">
+                        Top 5 Proveedores (Por volumen de gasto)
+                    </p>
+                    <div className="h-[250px] w-full">
+                        <ResponsiveContainer width="100%" height="100%">
+                        <BarChart data={topSuppliersData} layout="vertical">
+                            <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="hsl(var(--border))" />
+                            <XAxis 
+                              type="number"
+                              stroke="hsl(var(--muted-foreground))" 
+                              fontSize={12} 
+                              tickLine={false} 
+                              axisLine={false} 
+                              tickFormatter={(value) => `$${value}`}
+                            />
+                            <YAxis 
+                              dataKey="name" 
+                              type="category"
+                              stroke="hsl(var(--muted-foreground))" 
+                              fontSize={12} 
+                              tickLine={false} 
+                              axisLine={false} 
+                              width={100}
+                            />
+                            <Tooltip 
+                              cursor={{ fill: 'transparent' }}
+                              contentStyle={{ 
+                                  backgroundColor: 'hsl(var(--card))', 
+                                  borderRadius: '8px', 
+                                  border: '1px solid hsl(var(--border))',
+                                  boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)',
+                                  color: 'hsl(var(--foreground))'
+                              }}
+                              itemStyle={{ color: 'hsl(var(--foreground))' }}
+                              formatter={(value: number) => [`$${value.toFixed(2)}`, 'Gasto']}
+                            />
+                            <Bar 
+                              dataKey="value" 
+                              fill="hsl(var(--chart-2, #8b5cf6))" 
+                              radius={[0, 4, 4, 0]} 
+                              maxBarSize={30}
+                            />
+                        </BarChart>
+                        </ResponsiveContainer>
+                    </div>
+                </div>
             </div>
         </div>
       )}

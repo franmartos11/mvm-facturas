@@ -30,7 +30,7 @@ export default function DashboardClient() {
         </h1>
         <p className="text-muted-foreground">
           {step === 'upload' 
-            ? 'Sube tus facturas en formato PDF para procesarlas automáticamente.'
+            ? 'Sube tus facturas en formato PDF o imagen para procesarlas automáticamente.'
             : 'Estamos guardando tus facturas en la base de datos.'
           }
         </p>

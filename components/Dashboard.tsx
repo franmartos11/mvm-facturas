@@ -13,7 +13,7 @@ export default async function Dashboard() {
   return (
     <main className="min-h-screen p-8 bg-muted/40 font-[family-name:var(--font-geist-sans)]">
       <div className="max-w-7xl mx-auto space-y-8">
-        <header className="flex items-center justify-between pb-6 border-b border-border">
+        <header className="flex flex-col sm:flex-row sm:items-center justify-between pb-6 border-b border-border gap-4">
           <div>
             <h1 className="text-3xl font-bold text-foreground tracking-tight">
               Gestor de Facturas
@@ -21,6 +21,18 @@ export default async function Dashboard() {
             <p className="text-muted-foreground mt-1">
               Sube tus facturas PDF y deja que la IA extraiga los datos por ti.
             </p>
+          </div>
+          <div className="flex-shrink-0">
+            <a 
+              href="/api/export" 
+              download="exportacion_facturas.csv"
+              className="inline-flex items-center gap-2 bg-secondary text-secondary-foreground hover:bg-secondary/80 px-4 py-2 rounded-lg font-medium transition-colors shadow-sm"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+              </svg>
+              Exportar a CSV
+            </a>
           </div>
         </header>
 

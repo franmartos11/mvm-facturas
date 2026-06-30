@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { analyzeInvoice, deleteInvoice } from '@/app/actions'; // Need to fetch items too, but for MVP maybe just expand?
+import { analyzeInvoice, deleteInvoice, reanalyzeInvoice } from '@/app/actions'; // Need to fetch items too, but for MVP maybe just expand?
 // To keep it simple, let's just create a small component to fetch items client side or pass them if we had them.
 // Since getInvoices only gets the invoice table, we need to fetch items separately.
 // Let's create a Client Component "InvoiceItemsViewer" that fetches items.
@@ -9,8 +9,8 @@ import { analyzeInvoice, deleteInvoice } from '@/app/actions'; // Need to fetch 
 
 import { useRouter } from 'next/navigation';
 import InvoiceItemsViewer from './InvoiceItemsViewer';
-
 import ConfirmationModal from './ConfirmationModal';
+import PdfPreviewModal from './PdfPreviewModal';
 
 interface InvoiceRowProps {
   invoice: any;
@@ -21,15 +21,40 @@ export default function InvoiceRow({ invoice }: InvoiceRowProps) {
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [isExpanded, setIsExpanded] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [showPreviewModal, setShowPreviewModal] = useState(false);
 
   const handleAnalyze = async () => {
     setIsAnalyzing(true);
     try {
-      await analyzeInvoice(invoice.id, invoice.file_url);
-      router.refresh();
-      setIsExpanded(true); // Auto expand on success
+      const res = await analyzeInvoice(invoice.id, invoice.file_path);
+      if (res && !res.success) {
+        alert('Error al analizar la factura: ' + res.error);
+      } else {
+        router.refresh();
+        setIsExpanded(true); // Auto expand on success
+      }
     } catch (error) {
-      alert('Error al analizar la factura');
+      alert('Error inesperado al intentar comunicarse con el servidor.');
+    } finally {
+      setIsAnalyzing(false);
+    }
+  };
+
+  const handleReanalyze = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!confirm('¿Estás seguro de que quieres volver a analizar esta factura? Se borrarán los ítems actuales.')) return;
+    
+    setIsAnalyzing(true);
+    try {
+      const res = await reanalyzeInvoice(invoice.id, invoice.file_path);
+      if (res && !res.success) {
+        alert('Error al re-analizar la factura: ' + res.error);
+      } else {
+        router.refresh();
+        setIsExpanded(true);
+      }
+    } catch (error) {
+      alert('Error inesperado al intentar comunicarse con el servidor.');
     } finally {
       setIsAnalyzing(false);
     }
@@ -44,7 +69,7 @@ export default function InvoiceRow({ invoice }: InvoiceRowProps) {
     setShowDeleteModal(false);
     setIsAnalyzing(true); // Reuse loading state
     try {
-      await deleteInvoice(invoice.id, invoice.file_url);
+      await deleteInvoice(invoice.id, invoice.file_path);
       router.refresh();
     } catch (error) {
       alert('Error al borrar la factura');
@@ -79,10 +104,17 @@ export default function InvoiceRow({ invoice }: InvoiceRowProps) {
             </p>
             <div className="flex items-center gap-2">
               <p className="text-xs text-muted-foreground">
-                {new Date(invoice.created_at).toLocaleDateString('es-ES')}
+                {invoice.invoice_date 
+                  ? new Date(invoice.invoice_date).toLocaleDateString('es-ES')
+                  : new Date(invoice.created_at).toLocaleDateString('es-ES')}
                 {invoice.supplier && (
                   <span className="ml-2 font-medium text-foreground">
                     • {invoice.supplier}
+                  </span>
+                )}
+                {invoice.total !== null && invoice.total !== undefined && (
+                  <span className="ml-2 font-semibold text-primary">
+                    • ${Number(invoice.total).toFixed(2)}
                   </span>
                 )}
               </p>
@@ -118,25 +150,48 @@ export default function InvoiceRow({ invoice }: InvoiceRowProps) {
           )}
           
           {invoice.status === 'analyzed' && (
-             <button
-              onClick={() => setIsExpanded(!isExpanded)}
-              className="px-3 py-1.5 text-xs font-medium rounded-md bg-secondary text-secondary-foreground hover:bg-secondary/80"
-            >
-              {isExpanded ? 'Ocultar' : 'Ver Detalles'}
-            </button>
+             <div className="flex items-center gap-2">
+               <button
+                 onClick={handleReanalyze}
+                 disabled={isAnalyzing}
+                 className="p-1.5 text-muted-foreground hover:text-primary transition-colors hover:bg-primary/10 rounded-md"
+                 title="Re-analizar con IA"
+               >
+                 <svg xmlns="http://www.w3.org/2000/svg" className={`w-4 h-4 ${isAnalyzing ? 'animate-spin' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                 </svg>
+               </button>
+               <button
+                onClick={() => setIsExpanded(!isExpanded)}
+                className="px-3 py-1.5 text-xs font-medium rounded-md bg-secondary text-secondary-foreground hover:bg-secondary/80"
+               >
+                {isExpanded ? 'Ocultar' : 'Ver Detalles'}
+               </button>
+             </div>
           )}
 
-          <a 
-            href={invoice.file_url} 
-            target="_blank" 
-            rel="noopener noreferrer"
+          {invoice.status === 'error' && (
+             <button
+               onClick={handleReanalyze}
+               disabled={isAnalyzing}
+               className="px-3 py-1.5 text-xs font-medium rounded-md bg-orange-100 text-orange-700 hover:bg-orange-200 transition-colors"
+             >
+               {isAnalyzing ? '...' : 'Reintentar'}
+             </button>
+          )}
+
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              setShowPreviewModal(true);
+            }}
             className="p-2 text-muted-foreground hover:text-primary transition-colors"
-            title="Abrir PDF"
+            title="Abrir Archivo"
           >
             <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
             </svg>
-          </a>
+          </button>
 
           <button
             onClick={handleDelete}
@@ -152,7 +207,15 @@ export default function InvoiceRow({ invoice }: InvoiceRowProps) {
       </div>
       
       {isExpanded && invoice.status === 'analyzed' && (
-        <InvoiceItemsViewer invoiceId={invoice.id} />
+        <InvoiceItemsViewer invoice={invoice} />
+      )}
+      
+      {showPreviewModal && (
+        <PdfPreviewModal
+          url={`/api/uploads/${invoice.file_path}`}
+          filename={invoice.filename}
+          onClose={() => setShowPreviewModal(false)}
+        />
       )}
     </div>
     </>

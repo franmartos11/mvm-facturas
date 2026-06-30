@@ -59,8 +59,8 @@ export default function ProductsListClient({ initialItems }: ProductsListClientP
     Object.values(groups).forEach(group => {
        // Sort ascending by date
        group.sort((a, b) => {
-         const d1 = new Date(a.invoices?.created_at || 0).getTime();
-         const d2 = new Date(b.invoices?.created_at || 0).getTime();
+         const d1 = new Date(a.invoice_date || a.invoice_created_at || 0).getTime();
+         const d2 = new Date(b.invoice_date || b.invoice_created_at || 0).getTime();
          return d1 - d2;
        });
 
@@ -88,16 +88,27 @@ export default function ProductsListClient({ initialItems }: ProductsListClientP
        });
     });
 
-    // Return items enriched 
-    return initialItems.map(item => ({
-      ...item,
-      trend: trendMap.get(item.id) || { change: 0, type: 'new' }
-    }));
+    // 3. Return only the latest purchase for each unique product
+    const uniqueProducts = Object.values(groups).map(group => {
+       const latestItem = group[group.length - 1]; // The array is already sorted ascending by date
+       return {
+         ...latestItem,
+         trend: trendMap.get(latestItem.id) || { change: 0, type: 'new' },
+         purchaseCount: group.length
+       };
+    });
+
+    // Sort by most recently purchased overall
+    return uniqueProducts.sort((a, b) => {
+        const d1 = new Date(a.invoice_date || a.invoice_created_at || 0).getTime();
+        const d2 = new Date(b.invoice_date || b.invoice_created_at || 0).getTime();
+        return d2 - d1;
+    });
   }, [initialItems]);
 
   const filteredItems = itemsWithTrends.filter(item => 
     item.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    item.invoices?.filename.toLowerCase().includes(searchQuery.toLowerCase())
+    (item.filename && item.filename.toLowerCase().includes(searchQuery.toLowerCase()))
   );
 
   return (
@@ -154,8 +165,8 @@ export default function ProductsListClient({ initialItems }: ProductsListClientP
                         </div>
                       </td>
                       <td className="px-6 py-4 text-muted-foreground text-xs">
-                        <span className="line-clamp-1 max-w-[150px]" title={item.invoices?.filename}>
-                          {item.invoices?.filename}
+                        <span className="line-clamp-1 max-w-[150px]" title={item.filename}>
+                          {item.purchaseCount > 1 ? `Última: ${item.filename} (+${item.purchaseCount - 1} compras)` : item.filename}
                         </span>
                       </td>
                       <td className="px-6 py-4 text-right text-muted-foreground font-mono">

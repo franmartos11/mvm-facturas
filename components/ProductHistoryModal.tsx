@@ -31,10 +31,10 @@ export default function ProductHistoryModal({ productName, allItems, onClose }: 
     return allItems
       .filter(item => normalize(item.description) === target)
       .map(item => ({
-        date: item.invoices?.created_at, // ISO String
+        date: item.invoice_date || item.invoice_created_at, // ISO String
         price: item.unit_price,
         quantity: item.quantity,
-        invoice: item.invoices?.filename
+        invoice: item.filename
       }))
       .filter(item => item.date && item.price) // Ensure valid data
       .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()); // Sort by date ascending

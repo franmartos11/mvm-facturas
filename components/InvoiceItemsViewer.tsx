@@ -1,11 +1,11 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { createClient } from '@/utils/supabase/client';
 import { updateInvoiceItem } from '@/app/actions';
 
-export default function InvoiceItemsViewer({ invoiceId }: { invoiceId: number }) {
-  const supabase = createClient();
+export default function InvoiceItemsViewer({ invoice }: { invoice: any }) {
   const router = useRouter();
+  const invoiceId = invoice.id;
+
   const [items, setItems] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [editingId, setEditingId] = useState<number | null>(null);
@@ -13,18 +13,17 @@ export default function InvoiceItemsViewer({ invoiceId }: { invoiceId: number })
 
   useEffect(() => {
     const fetchItems = async () => {
-      const { data } = await supabase
-        .from('invoice_items')
-        .select('*')
-        .eq('invoice_id', invoiceId)
-        .order('id', { ascending: true });
-      
-      if (data) setItems(data);
+      const res = await fetch(`/api/invoice-items?invoiceId=${invoiceId}`);
+      if (res.ok) {
+        const data = await res.json();
+        setItems(data);
+      }
       setLoading(false);
     };
 
     fetchItems();
   }, [invoiceId]);
+
 
   const handleEdit = (item: any) => {
     setEditingId(item.id);
@@ -86,7 +85,16 @@ export default function InvoiceItemsViewer({ invoiceId }: { invoiceId: number })
                         value={editValues.description}
                         onChange={e => setEditValues({...editValues, description: e.target.value})}
                       />
-                    ) : item.description}
+                    ) : (
+                      <div className="flex flex-col gap-1">
+                        <span>{item.description}</span>
+                        {item.category && (
+                          <span className="w-fit text-[10px] px-1.5 py-0.5 rounded-md bg-secondary text-secondary-foreground font-medium border border-border">
+                            {item.category}
+                          </span>
+                        )}
+                      </div>
+                    )}
                   </td>
                   <td className="px-6 py-3 text-right text-muted-foreground font-mono">
                      {isEditing ? (
@@ -141,6 +149,31 @@ export default function InvoiceItemsViewer({ invoiceId }: { invoiceId: number })
               );
             })}
           </tbody>
+          {(invoice.subtotal !== null || invoice.total !== null) && (
+            <tfoot className="bg-muted/50 border-t border-border text-sm">
+              {invoice.subtotal !== null && (
+                <tr>
+                  <td colSpan={3} className="px-6 py-2 text-right font-medium text-muted-foreground">Subtotal</td>
+                  <td className="px-6 py-2 text-right font-mono text-foreground">${Number(invoice.subtotal).toFixed(2)}</td>
+                  <td></td>
+                </tr>
+              )}
+              {invoice.tax !== null && (
+                <tr>
+                  <td colSpan={3} className="px-6 py-2 text-right font-medium text-muted-foreground">IVA/Impuestos</td>
+                  <td className="px-6 py-2 text-right font-mono text-foreground">${Number(invoice.tax).toFixed(2)}</td>
+                  <td></td>
+                </tr>
+              )}
+              {invoice.total !== null && (
+                <tr>
+                  <td colSpan={3} className="px-6 py-3 text-right font-bold text-foreground">Total</td>
+                  <td className="px-6 py-3 text-right font-mono font-bold text-primary text-base">${Number(invoice.total).toFixed(2)}</td>
+                  <td></td>
+                </tr>
+              )}
+            </tfoot>
+          )}
         </table>
       </div>
     </div>

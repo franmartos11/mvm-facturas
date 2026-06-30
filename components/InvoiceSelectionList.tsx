@@ -56,7 +56,7 @@ export default function InvoiceSelectionList({ invoices }: InvoiceSelectionListP
       if (!invoice) continue;
 
       try {
-        await analyzeInvoice(id, invoice.file_url);
+        await analyzeInvoice(id, invoice.file_path);
       } catch (error) {
         console.error(`Error analyzing invoice ${id}:`, error);
         errorCount++;
@@ -86,7 +86,7 @@ export default function InvoiceSelectionList({ invoices }: InvoiceSelectionListP
       if (!invoice) continue;
 
       try {
-        await deleteInvoice(id, invoice.file_url);
+        await deleteInvoice(id, invoice.file_path);
       } catch (error) {
         console.error(`Error deleting invoice ${id}:`, error);
         errorCount++;
