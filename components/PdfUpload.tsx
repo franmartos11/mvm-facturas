@@ -30,11 +30,18 @@ export function PdfUpload({ onFilesSelect }: PdfUploadProps) {
 
   const validateAndAddFiles = (files: FileList | File[]) => {
     const validFiles: File[] = [];
+    const MAX_SIZE = 10 * 1024 * 1024; // 10MB
+
     Array.from(files).forEach(file => {
-      if (file.type === 'application/pdf' || file.type.startsWith('image/')) {
-        validFiles.push(file);
-      } else {
+      const isPdfOrImage = file.type === 'application/pdf' || file.type.startsWith('image/');
+      const isWithinSizeLimit = file.size <= MAX_SIZE;
+
+      if (!isPdfOrImage) {
         alert(`El archivo ${file.name} no es un PDF ni una imagen, y fue ignorado.`);
+      } else if (!isWithinSizeLimit) {
+        alert(`El archivo ${file.name} es demasiado grande. El límite máximo es de 10 MB.`);
+      } else {
+        validFiles.push(file);
       }
     });
 

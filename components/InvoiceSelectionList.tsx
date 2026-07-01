@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { analyzeInvoice, deleteInvoice } from '@/app/actions';
 import InvoiceRow from './InvoiceRow';
+import InvoiceFilters, { FilterState } from './InvoiceFilters';
 
 import ConfirmationModal from './ConfirmationModal';
 
@@ -16,13 +17,52 @@ export default function InvoiceSelectionList({ invoices }: InvoiceSelectionListP
   const [selectedIds, setSelectedIds] = useState<number[]>([]);
   const [isProcessing, setIsProcessing] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
-  const [searchQuery, setSearchQuery] = useState('');
   const [isSelectionMode, setIsSelectionMode] = useState(false);
+  
+  const [filters, setFilters] = useState<FilterState>({
+    search: '',
+    status: '',
+    supplier: '',
+    dateFrom: '',
+    dateTo: '',
+    minAmount: '',
+    maxAmount: ''
+  });
 
-  // Filter invoices based on search query
-  const filteredInvoices = invoices.filter(inv => 
-    inv.filename.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  // Filter invoices based on all criteria
+  const filteredInvoices = invoices.filter(inv => {
+    // 1. Search
+    const searchLower = filters.search.toLowerCase();
+    const matchesSearch = !filters.search || 
+      inv.filename.toLowerCase().includes(searchLower) ||
+      (inv.supplier && inv.supplier.toLowerCase().includes(searchLower)) ||
+      (inv.tags && inv.tags.some((t: string) => t.toLowerCase().includes(searchLower)));
+
+    if (!matchesSearch) return false;
+
+    // 2. Status
+    if (filters.status && inv.status !== filters.status) return false;
+
+    // 3. Supplier
+    if (filters.supplier && inv.supplier !== filters.supplier) return false;
+
+    // 4. Dates
+    const invDateStr = inv.invoice_date || inv.created_at;
+    const invDate = new Date(invDateStr).getTime();
+    if (filters.dateFrom && invDate < new Date(filters.dateFrom).getTime()) return false;
+    // Set to end of day for dateTo
+    if (filters.dateTo) {
+      const endTo = new Date(filters.dateTo);
+      endTo.setHours(23, 59, 59, 999);
+      if (invDate > endTo.getTime()) return false;
+    }
+
+    // 5. Amounts
+    if (filters.minAmount && Number(inv.total) < Number(filters.minAmount)) return false;
+    if (filters.maxAmount && Number(inv.total) > Number(filters.maxAmount)) return false;
+
+    return true;
+  });
 
   const toggleSelection = (id: number) => {
     setSelectedIds(prev => 
@@ -118,36 +158,38 @@ export default function InvoiceSelectionList({ invoices }: InvoiceSelectionListP
         isDestructive={true}
       />
       <div className="space-y-4">
-      {/* Search Bar */}
-      {/* Search Bar & Selection Toggle */}
-      <div className="flex items-center gap-4">
-        <div className="relative flex-1">
-          <input 
-            type="text" 
-            placeholder="Buscar facturas..." 
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full pl-10 pr-4 py-2 bg-background border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all"
-          />
-          <svg xmlns="http://www.w3.org/2000/svg" className="absolute left-3 top-2.5 w-4 h-4 text-muted-foreground" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-          </svg>
+      {/* Filters and Selection Toggle */}
+      <div className="flex flex-col gap-4">
+        <InvoiceFilters invoices={invoices} onFilterChange={setFilters} />
+        
+        <div className="flex justify-end gap-2">
+          <a
+            href={`/api/export?search=${encodeURIComponent(filters.search)}&status=${encodeURIComponent(filters.status)}&supplier=${encodeURIComponent(filters.supplier)}&dateFrom=${encodeURIComponent(filters.dateFrom)}&dateTo=${encodeURIComponent(filters.dateTo)}&minAmount=${encodeURIComponent(filters.minAmount)}&maxAmount=${encodeURIComponent(filters.maxAmount)}`}
+            download="exportacion_facturas.xlsx"
+            className="inline-flex items-center gap-2 bg-secondary text-secondary-foreground hover:bg-secondary/80 px-4 py-2 rounded-lg text-sm font-medium transition-colors border border-transparent shadow-sm"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+            </svg>
+            Exportar a Excel
+          </a>
+
+          <button
+            onClick={() => {
+              if (isSelectionMode) setSelectedIds([]);
+              setIsSelectionMode(!isSelectionMode);
+            }}
+            className={`
+              px-4 py-2 text-sm font-medium rounded-lg transition-colors border
+              ${isSelectionMode 
+                ? 'bg-muted text-foreground border-border hover:bg-muted/80' 
+                : 'bg-background text-primary border-transparent hover:bg-muted/50 hover:border-border'
+              }
+            `}
+          >
+            {isSelectionMode ? 'Cancelar Selección' : 'Seleccionar Varios'}
+          </button>
         </div>
-        <button
-          onClick={() => {
-            if (isSelectionMode) setSelectedIds([]);
-            setIsSelectionMode(!isSelectionMode);
-          }}
-          className={`
-            px-4 py-2 text-sm font-medium rounded-lg transition-colors border
-            ${isSelectionMode 
-              ? 'bg-muted text-foreground border-border hover:bg-muted/80' 
-              : 'bg-background text-primary border-transparent hover:bg-muted/50 hover:border-border'
-            }
-          `}
-        >
-          {isSelectionMode ? 'Cancelar' : 'Seleccionar'}
-        </button>
       </div>
 
       {/* Bulk Actions Header */}
@@ -201,7 +243,9 @@ export default function InvoiceSelectionList({ invoices }: InvoiceSelectionListP
       <div className="bg-card rounded-xl shadow-sm hover:shadow-md transition-shadow duration-300 border border-border overflow-hidden divide-y divide-border">
         {filteredInvoices.length === 0 ? (
           <div className="p-8 text-center text-muted-foreground">
-            {searchQuery ? 'No se encontraron facturas con ese nombre.' : 'No hay facturas subidas todavía.'}
+            {invoices.length === 0 
+              ? 'No hay facturas subidas todavía.' 
+              : 'No se encontraron facturas con los filtros actuales.'}
           </div>
         ) : (
           filteredInvoices.map((invoice) => {

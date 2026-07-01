@@ -4,7 +4,6 @@ import InvoiceList from '@/components/InvoiceList';
 import ProductsList from '@/components/ProductsList';
 import DashboardSummary from '@/components/DashboardSummary';
 import DashboardClient from '@/components/DashboardClient';
-import DashboardCharts from '@/components/DashboardCharts';
 
 export default async function Dashboard() {
   const invoices = await getInvoices();
@@ -16,31 +15,16 @@ export default async function Dashboard() {
         <header className="flex flex-col sm:flex-row sm:items-center justify-between pb-6 border-b border-border gap-4">
           <div>
             <h1 className="text-3xl font-bold text-foreground tracking-tight">
-              Gestor de Facturas
+              Gestión de Facturas
             </h1>
             <p className="text-muted-foreground mt-1">
               Sube tus facturas PDF y deja que la IA extraiga los datos por ti.
             </p>
           </div>
-          <div className="flex-shrink-0">
-            <a 
-              href="/api/export" 
-              download="exportacion_facturas.csv"
-              className="inline-flex items-center gap-2 bg-secondary text-secondary-foreground hover:bg-secondary/80 px-4 py-2 rounded-lg font-medium transition-colors shadow-sm"
-            >
-              <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-              </svg>
-              Exportar a CSV
-            </a>
-          </div>
         </header>
 
-        {/* Summary Cards */}
+        {/* Overview Summary */}
         <DashboardSummary invoices={invoices || []} items={items || []} />
-
-        {/* Charts */}
-        <DashboardCharts items={items || []} />
 
         {/* Main Content Grid */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">

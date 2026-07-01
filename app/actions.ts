@@ -188,6 +188,46 @@ export async function deleteInvoice(invoiceId: number, filePath: string) {
   return { success: true };
 }
 
+export async function updateInvoiceTags(invoiceId: number, tags: string[]) {
+  const user = await getSession();
+  if (!user) throw new Error('No autenticado');
+
+  // Verify ownership
+  const check = await query(
+    'SELECT id FROM invoices WHERE id = $1 AND user_id = $2',
+    [invoiceId, user.id]
+  );
+  if (check.rows.length === 0) throw new Error('Factura no encontrada');
+
+  await query('UPDATE invoices SET tags = $1 WHERE id = $2', [tags, invoiceId]);
+  revalidatePath('/');
+  return { success: true };
+}
+
+// ─── Budgets ──────────────────────────────────────────────────────────────────
+
+export async function getBudgets() {
+  const user = await getSession();
+  if (!user) return [];
+  const result = await query('SELECT category, amount FROM budgets WHERE user_id = $1', [user.id]);
+  return result.rows;
+}
+
+export async function upsertBudget(category: string, amount: number) {
+  const user = await getSession();
+  if (!user) throw new Error('No autenticado');
+  
+  await query(`
+    INSERT INTO budgets (user_id, category, amount)
+    VALUES ($1, $2, $3)
+    ON CONFLICT (user_id, category) DO UPDATE SET amount = $3
+  `, [user.id, category, amount]);
+  
+  revalidatePath('/settings');
+  revalidatePath('/');
+  return { success: true };
+}
+
 export async function updateInvoiceItem(
   itemId: number,
   updates: {
@@ -301,13 +341,15 @@ export async function analyzeInvoice(invoiceId: number, filePath: string) {
 
     const prompt = `
       Analiza esta factura e identifica:
-      1. El nombre del PROVEEDOR (ej: Mercadona, Endesa, Farmacia X). Si no es obvio, pon "Desconocido".
-      2. La fecha de la factura en formato YYYY-MM-DD. Si no hay, pon null.
-      3. El subtotal, los impuestos (IVA/tax) y el total final. Si no están claros, pon null o 0.
-      4. Los ítems comprados, asignando a cada uno una de estas categorías: "Alimentación", "Hogar", "Tecnología", "Transporte", "Salud", "Servicios" u "Otros".
+      1. Determina si el documento proporcionado es realmente una factura o ticket de compra. Si es una foto irrelevante, un paisaje, u otro documento, indica is_invoice: false.
+      2. El nombre del PROVEEDOR (ej: Mercadona, Endesa, Farmacia X). Si no es obvio, pon "Desconocido".
+      3. La fecha de la factura en formato YYYY-MM-DD. Si no hay, pon null.
+      4. El subtotal, los impuestos (IVA/tax) y el total final. Si no están claros, pon null o 0.
+      5. Los ítems comprados, asignando a cada uno una de estas categorías: "Alimentación", "Hogar", "Tecnología", "Transporte", "Salud", "Servicios" u "Otros".
 
       Devuélveme SOLO un JSON válido con esta estructura:
       {
+        "is_invoice": true,
         "supplier": "Nombre Proveedor",
         "invoice_date": "2023-12-01",
         "subtotal": 100.00,
@@ -354,12 +396,19 @@ export async function analyzeInvoice(invoiceId: number, filePath: string) {
       throw new Error('El JSON devuelto es inválido: ' + e.message);
     }
 
+    const isInvoice = data.is_invoice !== false; // default to true if undefined
     const items = Array.isArray(data) ? data : data.items;
     const supplier = Array.isArray(data) ? 'Desconocido' : (data.supplier || 'Desconocido');
     const invoiceDate = data.invoice_date || null;
     const subtotal = data.subtotal || null;
     const tax = data.tax || null;
     const total = data.total || null;
+
+    if (!isInvoice) {
+      await query('UPDATE invoices SET status = $1 WHERE id = $2', ['invalid', invoiceId]);
+      revalidatePath('/');
+      return { success: true };
+    }
 
     // Actualizar factura
     await query(

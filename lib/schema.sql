@@ -22,7 +22,17 @@ CREATE TABLE IF NOT EXISTS invoices (
   tax NUMERIC,
   total NUMERIC,
   file_hash TEXT,
+  tags TEXT[],
   created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS budgets (
+  id SERIAL PRIMARY KEY,
+  user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  category TEXT NOT NULL,
+  amount NUMERIC NOT NULL,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  UNIQUE(user_id, category)
 );
 
 CREATE TABLE IF NOT EXISTS invoice_items (

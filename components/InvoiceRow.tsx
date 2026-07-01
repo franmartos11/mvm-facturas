@@ -11,6 +11,7 @@ import { useRouter } from 'next/navigation';
 import InvoiceItemsViewer from './InvoiceItemsViewer';
 import ConfirmationModal from './ConfirmationModal';
 import PdfPreviewModal from './PdfPreviewModal';
+import TagEditor from './TagEditor';
 
 interface InvoiceRowProps {
   invoice: any;
@@ -102,6 +103,7 @@ export default function InvoiceRow({ invoice }: InvoiceRowProps) {
             <p className="font-medium text-foreground truncate">
               {invoice.filename}
             </p>
+            <TagEditor invoiceId={invoice.id} initialTags={invoice.tags} />
             <div className="flex items-center gap-2">
               <p className="text-xs text-muted-foreground">
                 {invoice.invoice_date 
@@ -128,12 +130,17 @@ export default function InvoiceRow({ invoice }: InvoiceRowProps) {
                   Error
                 </span>
               )}
+              {invoice.status === 'invalid' && (
+                <span className="text-[10px] bg-zinc-100 text-zinc-700 px-1.5 py-0.5 rounded-full font-medium border border-zinc-200">
+                  No es factura
+                </span>
+              )}
             </div>
           </div>
         </div>
         
         <div className="flex items-center gap-2" onClick={e => e.stopPropagation()}>
-          {invoice.status !== 'analyzed' && (
+          {invoice.status === 'pending' && (
             <button
               onClick={handleAnalyze}
               disabled={isAnalyzing}
@@ -170,7 +177,7 @@ export default function InvoiceRow({ invoice }: InvoiceRowProps) {
              </div>
           )}
 
-          {invoice.status === 'error' && (
+          {(invoice.status === 'error' || invoice.status === 'invalid') && (
              <button
                onClick={handleReanalyze}
                disabled={isAnalyzing}
