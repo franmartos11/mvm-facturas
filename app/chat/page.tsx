@@ -12,7 +12,7 @@ export default async function ChatPage() {
   if (!user) redirect('/login');
 
   return (
-    <main className="h-[calc(100vh_-_4rem)] bg-muted/40 font-[family-name:var(--font-geist-sans)]">
+    <main className="bg-muted/40 font-[family-name:var(--font-geist-sans)]" style={{ height: 'calc(100vh - 4rem)' }}>
       <ChatInterface />
     </main>
   );
