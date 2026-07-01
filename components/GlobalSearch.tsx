@@ -62,7 +62,7 @@ export default function GlobalSearch() {
         <input
           type="text"
           placeholder="Buscar facturas, proveedores..."
-          className="w-64 pl-9 pr-4 py-1.5 text-sm bg-muted/50 border border-border rounded-full focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all"
+          className="w-64 pl-10 pr-4 py-1.5 text-sm text-foreground placeholder:text-muted-foreground bg-muted/50 border border-border rounded-full focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all"
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           onFocus={() => { if (results) setIsOpen(true) }}
