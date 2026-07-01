@@ -194,18 +194,21 @@ export default function ChatInterface() {
   };
 
   return (
-    <div className="h-full flex overflow-hidden bg-background">
+    <div className="h-full flex overflow-hidden bg-[#0a0a0a] relative selection:bg-violet-500/30">
+      {/* Background ambient glow */}
+      <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full h-[500px] bg-violet-500/5 blur-[120px] rounded-full pointer-events-none" />
+
       {/* Sidebar */}
       <div className={`
-        ${isSidebarOpen ? 'w-64' : 'w-0'} 
-        shrink-0 border-r border-border bg-muted/10 flex flex-col transition-all duration-300 overflow-hidden
+        ${isSidebarOpen ? 'w-72' : 'w-0'} 
+        shrink-0 border-r border-white/5 bg-black/40 backdrop-blur-xl flex flex-col transition-all duration-300 overflow-hidden z-20
       `}>
-        <div className="p-4 border-b border-border">
+        <div className="p-4 border-b border-white/5">
           <button 
             onClick={handleNewChat}
-            className="w-full flex items-center gap-2 px-4 py-2 bg-primary/10 text-primary hover:bg-primary/20 rounded-lg font-medium transition-colors border border-primary/20"
+            className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-white/5 hover:bg-white/10 text-foreground rounded-xl font-medium transition-all duration-300 border border-white/5 shadow-sm hover:shadow-md group"
           >
-            <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4 text-violet-400 group-hover:scale-110 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
             </svg>
             Nuevo Chat
@@ -221,8 +224,10 @@ export default function ChatInterface() {
                 key={session.id}
                 onClick={() => setCurrentSessionId(session.id)}
                 className={`
-                  group flex items-center justify-between p-3 rounded-lg cursor-pointer transition-colors
-                  ${currentSessionId === session.id ? 'bg-accent text-accent-foreground' : 'hover:bg-muted text-muted-foreground hover:text-foreground'}
+                  group flex items-center justify-between p-3 rounded-xl cursor-pointer transition-all duration-300 relative overflow-hidden
+                  ${currentSessionId === session.id 
+                    ? 'bg-violet-500/10 text-violet-300 border border-violet-500/20 shadow-[inset_0_0_20px_rgba(139,92,246,0.05)]' 
+                    : 'hover:bg-white/5 text-foreground/70 hover:text-foreground border border-transparent'}
                 `}
               >
                 <div className="flex items-center gap-2 overflow-hidden">
@@ -249,11 +254,11 @@ export default function ChatInterface() {
       {/* Main Chat Area */}
       <div className="flex-1 flex flex-col min-w-0 max-w-5xl mx-auto px-4 pb-0 relative">
         {/* Header */}
-        <div className="py-5 flex items-center justify-between border-b border-border pl-2">
+        <div className="py-5 flex items-center justify-between border-b border-white/5 pl-2 z-10 relative">
           <div className="flex items-start gap-4">
             <button 
               onClick={() => setIsSidebarOpen(!isSidebarOpen)}
-              className="mt-0.5 p-2 text-muted-foreground hover:text-foreground bg-muted/20 hover:bg-muted/50 rounded-md transition-colors"
+              className="mt-0.5 p-2 text-foreground/50 hover:text-foreground bg-white/5 hover:bg-white/10 border border-white/5 rounded-xl transition-all duration-300 shadow-sm"
               title="Alternar panel lateral"
             >
               <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -261,8 +266,8 @@ export default function ChatInterface() {
               </svg>
             </button>
             <div>
-              <h1 className="text-xl font-bold text-foreground flex items-center gap-2">
-                <span className="inline-flex w-8 h-8 bg-violet-500/20 text-violet-500 rounded-full items-center justify-center">
+              <h1 className="text-xl font-bold text-foreground flex items-center gap-3 tracking-tight">
+                <span className="inline-flex w-9 h-9 bg-gradient-to-br from-violet-500/20 to-indigo-500/20 border border-violet-500/30 text-violet-400 rounded-xl items-center justify-center shadow-[0_0_15px_rgba(139,92,246,0.15)]">
                   <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
                   </svg>
@@ -278,7 +283,7 @@ export default function ChatInterface() {
             </div>
           </div>
           
-          <button onClick={clearAllHistory} className="p-2 text-muted-foreground hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors" title="Borrar TODOS los chats">
+          <button onClick={clearAllHistory} className="p-2 text-foreground/40 hover:text-red-400 hover:bg-red-500/10 rounded-xl transition-all duration-300" title="Borrar TODOS los chats">
             <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
             </svg>
@@ -286,42 +291,42 @@ export default function ChatInterface() {
         </div>
 
         {/* Messages */}
-        <div className="flex-1 overflow-y-auto py-6 space-y-6 px-2">
+        <div className="flex-1 overflow-y-auto py-8 space-y-8 px-2 z-10 relative scrollbar-thin scrollbar-thumb-white/10 scrollbar-track-transparent">
           {messages.map(msg => (
-            <div key={msg.id} className={`flex gap-4 ${msg.role === 'user' ? 'flex-row-reverse' : 'flex-row'}`}>
+            <div key={msg.id} className={`flex gap-4 ${msg.role === 'user' ? 'flex-row-reverse' : 'flex-row'} animate-in fade-in slide-in-from-bottom-2 duration-500 ease-out`}>
               {/* Avatar */}
-              <div className={`w-8 h-8 rounded-full shrink-0 flex items-center justify-center text-sm font-bold ${
+              <div className={`w-9 h-9 rounded-xl shrink-0 flex items-center justify-center text-sm font-bold shadow-sm ${
                 msg.role === 'user'
-                  ? 'bg-primary text-primary-foreground'
-                  : 'bg-violet-500/20 text-violet-600'
+                  ? 'bg-gradient-to-br from-indigo-500 to-purple-600 text-white'
+                  : 'bg-white/5 border border-white/10 text-violet-400'
               }`}>
                 {msg.role === 'user' ? 'Tú' : '✦'}
               </div>
 
               {/* Bubble */}
-              <div className={`flex-1 max-w-[80%] ${msg.role === 'user' ? 'items-end' : 'items-start'} flex flex-col gap-2`}>
-                <div className={`rounded-2xl px-4 py-3 ${
+              <div className={`flex-1 max-w-[85%] ${msg.role === 'user' ? 'items-end' : 'items-start'} flex flex-col gap-2`}>
+                <div className={`px-5 py-3.5 leading-relaxed text-sm shadow-sm ${
                   msg.role === 'user'
-                    ? 'bg-primary text-primary-foreground rounded-tr-sm'
-                    : 'bg-card border border-border rounded-tl-sm shadow-sm'
+                    ? 'bg-gradient-to-r from-indigo-500 to-purple-600 text-white rounded-2xl rounded-tr-sm'
+                    : 'bg-white/5 border border-white/10 backdrop-blur-md rounded-2xl rounded-tl-sm text-foreground/90'
                 }`}>
                   {msg.isLoading ? (
-                    <div className="flex gap-1 items-center py-1">
-                      <div className="w-2 h-2 bg-muted-foreground rounded-full animate-bounce" style={{ animationDelay: '0ms' }}></div>
-                      <div className="w-2 h-2 bg-muted-foreground rounded-full animate-bounce" style={{ animationDelay: '150ms' }}></div>
-                      <div className="w-2 h-2 bg-muted-foreground rounded-full animate-bounce" style={{ animationDelay: '300ms' }}></div>
+                    <div className="flex gap-1.5 items-center py-1">
+                      <div className="w-1.5 h-1.5 bg-violet-400/60 rounded-full animate-bounce" style={{ animationDelay: '0ms' }}></div>
+                      <div className="w-1.5 h-1.5 bg-violet-400/60 rounded-full animate-bounce" style={{ animationDelay: '150ms' }}></div>
+                      <div className="w-1.5 h-1.5 bg-violet-400/60 rounded-full animate-bounce" style={{ animationDelay: '300ms' }}></div>
                     </div>
                   ) : (
-                    <p className="text-sm whitespace-pre-wrap leading-relaxed">{msg.content}</p>
+                    <p className="whitespace-pre-wrap">{msg.content}</p>
                   )}
                 </div>
 
                 {/* SQL Details Toggle */}
                 {msg.sql && (
-                  <div className="w-full">
+                  <div className="w-full mt-1">
                     <button
                       onClick={() => setShowSql(showSql === msg.id ? null : msg.id)}
-                      className="text-xs text-muted-foreground hover:text-foreground flex items-center gap-1 transition-colors"
+                      className="text-xs text-foreground/40 hover:text-violet-400 flex items-center gap-1.5 transition-colors font-medium px-1"
                     >
                       <svg xmlns="http://www.w3.org/2000/svg" className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4" />
@@ -329,25 +334,25 @@ export default function ChatInterface() {
                       {showSql === msg.id ? 'Ocultar query SQL' : `Ver query SQL`}
                     </button>
                     {showSql === msg.id && (
-                      <div className="mt-2 rounded-lg bg-muted p-3 font-mono text-xs text-muted-foreground overflow-x-auto animate-in fade-in border border-border">
+                      <div className="mt-2 rounded-xl bg-black/50 border border-white/5 p-4 font-mono text-[11px] text-foreground/70 overflow-x-auto animate-in fade-in slide-in-from-top-1">
                         {msg.sql}
                       </div>
                     )}
                     {showSql === msg.id && msg.rawData && msg.rawData.length > 0 && (
-                      <div className="mt-2 rounded-lg border border-border overflow-auto max-h-48 animate-in fade-in bg-card">
+                      <div className="mt-2 rounded-xl border border-white/5 overflow-auto max-h-48 animate-in fade-in slide-in-from-top-1 bg-black/40 backdrop-blur-md">
                         <table className="w-full text-xs text-left">
-                          <thead className="bg-muted">
+                          <thead className="bg-white/5 backdrop-blur-md sticky top-0">
                             <tr>
                               {Object.keys(msg.rawData[0]).map(col => (
-                                <th key={col} className="px-3 py-2 font-medium text-muted-foreground">{col}</th>
+                                <th key={col} className="px-4 py-2.5 font-medium text-foreground/60">{col}</th>
                               ))}
                             </tr>
                           </thead>
-                          <tbody className="divide-y divide-border">
+                          <tbody className="divide-y divide-white/5">
                             {msg.rawData.map((row, i) => (
-                              <tr key={i} className="hover:bg-muted/50 transition-colors">
+                              <tr key={i} className="hover:bg-white/5 transition-colors">
                                 {Object.values(row).map((val: any, j) => (
-                                  <td key={j} className="px-3 py-2 text-foreground">{val?.toString() ?? 'null'}</td>
+                                  <td key={j} className="px-4 py-2.5 text-foreground/80">{val?.toString() ?? 'null'}</td>
                                 ))}
                               </tr>
                             ))}
@@ -365,14 +370,14 @@ export default function ChatInterface() {
 
         {/* Suggested Questions (shown only when chat is at welcome state) */}
         {messages.length === 1 && (
-          <div className="pb-4 px-2">
-            <p className="text-xs text-muted-foreground mb-3 font-medium uppercase tracking-wider">Preguntas frecuentes</p>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+          <div className="pb-6 px-2 z-10 relative">
+            <p className="text-[10px] text-foreground/40 mb-3 font-bold uppercase tracking-widest pl-1">Preguntas sugeridas</p>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               {SUGGESTED_QUESTIONS.map(q => (
                 <button
                   key={q}
                   onClick={() => handleSubmit(q)}
-                  className="text-left p-3 text-sm border border-border rounded-xl hover:bg-accent hover:border-primary/30 transition-all text-muted-foreground hover:text-foreground shadow-sm bg-card"
+                  className="text-left p-4 text-sm border border-white/5 rounded-2xl hover:bg-white/5 transition-all duration-300 text-foreground/70 hover:text-foreground shadow-sm bg-black/20 backdrop-blur-md hover:-translate-y-0.5 hover:shadow-md hover:border-violet-500/30"
                 >
                   {q}
                 </button>
@@ -382,8 +387,8 @@ export default function ChatInterface() {
         )}
 
         {/* Input */}
-        <div className="pb-6 pt-2 border-t border-border bg-background px-2">
-          <div className="relative flex items-end gap-3 bg-card border border-border rounded-2xl p-3 focus-within:border-primary/50 focus-within:ring-2 focus-within:ring-primary/10 transition-all shadow-sm">
+        <div className="pb-8 pt-2 z-10 relative px-2 bg-gradient-to-t from-[#0a0a0a] via-[#0a0a0a] to-transparent">
+          <div className="relative flex items-end gap-3 bg-white/5 backdrop-blur-xl border border-white/10 rounded-[24px] p-2.5 focus-within:border-violet-500/50 focus-within:ring-4 focus-within:ring-violet-500/10 transition-all duration-300 shadow-[0_8px_30px_rgba(0,0,0,0.4)]">
             <textarea
               ref={inputRef}
               rows={1}
@@ -391,17 +396,17 @@ export default function ChatInterface() {
               onChange={e => setInput(e.target.value)}
               onKeyDown={handleKeyDown}
               placeholder="Escribe tu consulta financiera..."
-              className="flex-1 bg-transparent resize-none outline-none text-sm text-foreground placeholder:text-muted-foreground max-h-32 overflow-y-auto"
+              className="flex-1 bg-transparent resize-none outline-none text-[15px] text-foreground placeholder:text-foreground/40 max-h-32 overflow-y-auto px-3 py-2 scrollbar-thin scrollbar-thumb-white/10"
               style={{ fieldSizing: 'content' } as any}
               disabled={isLoading}
             />
             <button
               onClick={() => handleSubmit()}
               disabled={isLoading || !input.trim()}
-              className={`shrink-0 w-8 h-8 flex items-center justify-center rounded-xl transition-all shadow-sm ${
+              className={`shrink-0 w-11 h-11 flex items-center justify-center rounded-full transition-all duration-300 ${
                 isLoading || !input.trim()
-                  ? 'bg-muted text-muted-foreground cursor-not-allowed border border-border'
-                  : 'bg-primary text-primary-foreground hover:bg-primary/90'
+                  ? 'bg-white/5 text-foreground/30 cursor-not-allowed border border-white/5'
+                  : 'bg-violet-600 text-white hover:bg-violet-500 hover:scale-105 shadow-[0_0_20px_rgba(139,92,246,0.3)] hover:shadow-[0_0_25px_rgba(139,92,246,0.5)]'
               }`}
             >
               {isLoading ? (
@@ -413,7 +418,7 @@ export default function ChatInterface() {
               )}
             </button>
           </div>
-          <p className="text-[10px] text-muted-foreground text-center mt-2 uppercase tracking-wide font-medium">
+          <p className="text-[10px] text-foreground/30 text-center mt-3 uppercase tracking-widest font-bold">
             Presioná Enter para enviar · Shift+Enter para salto de línea
           </p>
         </div>
