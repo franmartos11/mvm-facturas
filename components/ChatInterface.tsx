@@ -467,23 +467,6 @@ export default function ChatInterface() {
           <div ref={bottomRef} />
         </div>
 
-        {/* Suggested Questions (shown only when chat is at welcome state) */}
-        {messages.length === 1 && (
-          <div className="shrink-0 pb-8 px-4 z-10 relative">
-            <p className="text-[11px] text-muted-foreground mb-4 font-bold uppercase tracking-widest pl-2">Preguntas sugeridas</p>
-            <div className="grid grid-cols-1 gap-4">
-              {SUGGESTED_QUESTIONS.map(q => (
-                <button
-                  key={q}
-                  onClick={() => handleSubmit(q)}
-                  className="text-left px-6 py-4 text-[15px] border border-border rounded-[20px] hover:bg-accent transition-all duration-300 text-foreground shadow-sm bg-card backdrop-blur-md hover:-translate-y-0.5 hover:shadow-lg hover:border-violet-500/40"
-                >
-                  {q}
-                </button>
-              ))}
-            </div>
-          </div>
-        )}
 
         {/* Input */}
         <div className="shrink-0 pb-10 pt-4 z-10 relative px-4 bg-gradient-to-t from-background via-background to-transparent">

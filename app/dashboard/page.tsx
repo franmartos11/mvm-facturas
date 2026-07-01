@@ -102,11 +102,11 @@ export default function AnalyticsDashboard() {
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={monthly}>
                   <XAxis dataKey="month" stroke="hsl(var(--muted-foreground))" fontSize={12} tickLine={false} axisLine={false} />
-                  <YAxis stroke="hsl(var(--muted-foreground))" fontSize={12} tickLine={false} axisLine={false} tickFormatter={val => \`$\${val}\`} />
+                  <YAxis stroke="hsl(var(--muted-foreground))" fontSize={12} tickLine={false} axisLine={false} tickFormatter={val => `$${val}`} />
                   <Tooltip 
                     contentStyle={{ backgroundColor: 'hsl(var(--card))', border: '1px solid hsl(var(--border))', borderRadius: '12px', color: 'hsl(var(--foreground))' }}
                     itemStyle={{ color: 'hsl(var(--foreground))' }}
-                    formatter={(value: any) => [\`$\${Number(value).toFixed(2)}\`, 'Total']}
+                    formatter={(value: any) => [`$${Number(value).toFixed(2)}`, 'Total']}
                   />
                   <Bar dataKey="total" fill="#8b5cf6" radius={[6, 6, 0, 0]} />
                 </BarChart>
