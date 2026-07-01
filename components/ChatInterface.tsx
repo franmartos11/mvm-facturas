@@ -267,7 +267,7 @@ export default function ChatInterface() {
             </button>
             <div className="flex flex-col justify-center">
               <h1 className="text-2xl font-bold text-foreground flex items-center gap-3.5 tracking-tight">
-                <span className="inline-flex w-10 h-10 bg-violet-500/10 border border-violet-500/20 text-violet-400 rounded-xl items-center justify-center shadow-[0_0_15px_rgba(139,92,246,0.1)]">
+                <span className="inline-flex w-10 h-10 bg-violet-500/10 border border-violet-500/20 text-violet-400 rounded-full items-center justify-center shadow-[0_0_15px_rgba(139,92,246,0.1)]">
                   <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
                   </svg>
@@ -291,11 +291,11 @@ export default function ChatInterface() {
         </div>
 
         {/* Messages */}
-        <div className="flex-1 overflow-y-auto py-10 space-y-10 px-6 z-10 relative scrollbar-thin scrollbar-thumb-white/10 scrollbar-track-transparent">
+        <div className="flex-1 overflow-y-auto pt-12 pb-10 space-y-12 px-6 z-10 relative scrollbar-thin scrollbar-thumb-white/10 scrollbar-track-transparent">
           {messages.map(msg => (
             <div key={msg.id} className={`flex gap-6 ${msg.role === 'user' ? 'flex-row-reverse' : 'flex-row'} animate-in fade-in slide-in-from-bottom-2 duration-500 ease-out`}>
               {/* Avatar */}
-              <div className={`w-10 h-10 rounded-2xl shrink-0 flex items-center justify-center text-[15px] font-bold shadow-sm ${
+              <div className={`w-10 h-10 rounded-full shrink-0 flex items-center justify-center text-[15px] font-bold shadow-sm ${
                 msg.role === 'user'
                   ? 'bg-gradient-to-br from-indigo-500 to-purple-600 text-white'
                   : 'bg-violet-500/10 border border-violet-500/20 text-violet-400'
@@ -305,10 +305,10 @@ export default function ChatInterface() {
 
               {/* Bubble */}
               <div className={`max-w-[85%] ${msg.role === 'user' ? 'items-end' : 'items-start'} flex flex-col gap-3`}>
-                <div className={`w-fit px-6 py-4 leading-relaxed text-[15px] shadow-sm ${
+                <div className={`w-fit px-7 py-5 leading-relaxed text-[15px] shadow-sm ${
                   msg.role === 'user'
-                    ? 'bg-gradient-to-r from-indigo-500 to-purple-600 text-white rounded-3xl rounded-tr-md'
-                    : 'bg-zinc-900 border border-zinc-800 rounded-3xl rounded-tl-md text-foreground/90'
+                    ? 'bg-gradient-to-r from-indigo-500 to-purple-600 text-white rounded-[24px] rounded-tr-[4px]'
+                    : 'bg-zinc-900 border border-zinc-800 rounded-[24px] rounded-tl-[4px] text-foreground/90'
                 }`}>
                   {msg.isLoading ? (
                     <div className="flex gap-1.5 items-center py-1">
@@ -372,12 +372,12 @@ export default function ChatInterface() {
         {messages.length === 1 && (
           <div className="shrink-0 pb-8 px-4 z-10 relative">
             <p className="text-[11px] text-foreground/40 mb-4 font-bold uppercase tracking-widest pl-2">Preguntas sugeridas</p>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 gap-4">
               {SUGGESTED_QUESTIONS.map(q => (
                 <button
                   key={q}
                   onClick={() => handleSubmit(q)}
-                  className="text-left p-5 text-[15px] border border-white/5 rounded-3xl hover:bg-white/5 transition-all duration-300 text-foreground/70 hover:text-foreground shadow-sm bg-black/20 backdrop-blur-md hover:-translate-y-0.5 hover:shadow-lg hover:border-violet-500/30"
+                  className="text-left px-6 py-4 text-[15px] border border-white/10 rounded-[20px] hover:bg-white/5 transition-all duration-300 text-foreground/80 hover:text-foreground shadow-sm bg-black/40 backdrop-blur-md hover:-translate-y-0.5 hover:shadow-lg hover:border-violet-500/40"
                 >
                   {q}
                 </button>
@@ -388,7 +388,7 @@ export default function ChatInterface() {
 
         {/* Input */}
         <div className="shrink-0 pb-10 pt-4 z-10 relative px-4 bg-gradient-to-t from-[#0a0a0a] via-[#0a0a0a] to-transparent">
-          <div className="relative flex items-end gap-4 bg-white/5 backdrop-blur-xl border border-white/10 rounded-[28px] p-3 focus-within:border-violet-500/50 focus-within:ring-4 focus-within:ring-violet-500/10 transition-all duration-300 shadow-[0_8px_30px_rgba(0,0,0,0.4)]">
+          <div className="relative flex items-center gap-4 bg-white/5 backdrop-blur-xl border border-white/10 rounded-full p-2 pl-6 focus-within:border-violet-500/50 focus-within:ring-4 focus-within:ring-violet-500/10 transition-all duration-300 shadow-[0_8px_30px_rgba(0,0,0,0.4)]">
             <textarea
               ref={inputRef}
               rows={1}
@@ -396,7 +396,7 @@ export default function ChatInterface() {
               onChange={e => setInput(e.target.value)}
               onKeyDown={handleKeyDown}
               placeholder="Escribe tu consulta financiera..."
-              className="flex-1 bg-transparent resize-none outline-none text-[15px] text-foreground placeholder:text-foreground/40 max-h-32 overflow-y-auto px-3 py-2 scrollbar-thin scrollbar-thumb-white/10"
+              className="flex-1 bg-transparent resize-none outline-none text-[15px] text-foreground placeholder:text-foreground/40 max-h-32 overflow-y-auto py-3 scrollbar-thin scrollbar-thumb-white/10"
               style={{ fieldSizing: 'content' } as any}
               disabled={isLoading}
             />
