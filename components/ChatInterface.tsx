@@ -1,6 +1,11 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
+import { exportToCsv } from '@/utils/exportCsv';
+import {
+  BarChart, Bar, XAxis, YAxis, Tooltip as RechartsTooltip, ResponsiveContainer,
+  PieChart, Pie, Cell, Legend
+} from 'recharts';
 
 interface Message {
   id: string;
@@ -42,6 +47,7 @@ export default function ChatInterface() {
   const [isLoading, setIsLoading] = useState(false);
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [showSql, setShowSql] = useState<string | null>(null);
+  const [chartViews, setChartViews] = useState<Record<string, 'table' | 'bar' | 'pie'>>({});
   
   const bottomRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
@@ -339,25 +345,118 @@ export default function ChatInterface() {
                       </div>
                     )}
                     {showSql === msg.id && msg.rawData && msg.rawData.length > 0 && (
-                      <div className="mt-2 rounded-xl border border-white/5 overflow-auto max-h-48 animate-in fade-in slide-in-from-top-1 bg-black/40 backdrop-blur-md">
-                        <table className="w-full text-xs text-left">
-                          <thead className="bg-white/5 backdrop-blur-md sticky top-0">
-                            <tr>
-                              {Object.keys(msg.rawData[0]).map(col => (
-                                <th key={col} className="px-4 py-2.5 font-medium text-foreground/60">{col}</th>
-                              ))}
-                            </tr>
-                          </thead>
-                          <tbody className="divide-y divide-white/5">
-                            {msg.rawData.map((row, i) => (
-                              <tr key={i} className="hover:bg-white/5 transition-colors">
-                                {Object.values(row).map((val: any, j) => (
-                                  <td key={j} className="px-4 py-2.5 text-foreground/80">{val?.toString() ?? 'null'}</td>
+                      <div className="mt-2 rounded-xl border border-white/5 overflow-hidden animate-in fade-in slide-in-from-top-1 bg-black/40 backdrop-blur-md">
+                        <div className="flex items-center justify-between px-4 py-2 border-b border-white/5 bg-white/5">
+                          <div className="flex items-center gap-2">
+                            <button
+                              onClick={() => setChartViews(prev => ({ ...prev, [msg.id]: 'table' }))}
+                              className={`text-[11px] px-2 py-1 rounded-md transition-colors ${!chartViews[msg.id] || chartViews[msg.id] === 'table' ? 'bg-violet-500/20 text-violet-300' : 'text-foreground/50 hover:bg-white/5'}`}
+                            >
+                              Tabla
+                            </button>
+                            <button
+                              onClick={() => setChartViews(prev => ({ ...prev, [msg.id]: 'bar' }))}
+                              className={`text-[11px] px-2 py-1 rounded-md transition-colors ${chartViews[msg.id] === 'bar' ? 'bg-violet-500/20 text-violet-300' : 'text-foreground/50 hover:bg-white/5'}`}
+                            >
+                              Gráfico Barras
+                            </button>
+                            <button
+                              onClick={() => setChartViews(prev => ({ ...prev, [msg.id]: 'pie' }))}
+                              className={`text-[11px] px-2 py-1 rounded-md transition-colors ${chartViews[msg.id] === 'pie' ? 'bg-violet-500/20 text-violet-300' : 'text-foreground/50 hover:bg-white/5'}`}
+                            >
+                              Gráfico Torta
+                            </button>
+                          </div>
+                          <button
+                            onClick={() => exportToCsv(`exportacion_${msg.id}`, msg.rawData!)}
+                            className="text-[11px] flex items-center gap-1.5 text-foreground/50 hover:text-green-400 transition-colors bg-white/5 hover:bg-green-500/10 px-2 py-1 rounded-md border border-white/5"
+                          >
+                            <svg xmlns="http://www.w3.org/2000/svg" className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                            </svg>
+                            Exportar CSV
+                          </button>
+                        </div>
+
+                        {(!chartViews[msg.id] || chartViews[msg.id] === 'table') && (
+                          <div className="overflow-auto max-h-64">
+                            <table className="w-full text-xs text-left">
+                              <thead className="bg-white/5 backdrop-blur-md sticky top-0">
+                                <tr>
+                                  {Object.keys(msg.rawData[0]).map(col => (
+                                    <th key={col} className="px-4 py-2.5 font-medium text-foreground/60">{col}</th>
+                                  ))}
+                                </tr>
+                              </thead>
+                              <tbody className="divide-y divide-white/5">
+                                {msg.rawData.map((row, i) => (
+                                  <tr key={i} className="hover:bg-white/5 transition-colors">
+                                    {Object.values(row).map((val: any, j) => (
+                                      <td key={j} className="px-4 py-2.5 text-foreground/80">{val?.toString() ?? 'null'}</td>
+                                    ))}
+                                  </tr>
                                 ))}
-                              </tr>
-                            ))}
-                          </tbody>
-                        </table>
+                              </tbody>
+                            </table>
+                          </div>
+                        )}
+
+                        {chartViews[msg.id] === 'bar' && (
+                          <div className="h-64 p-4">
+                            <ResponsiveContainer width="100%" height="100%">
+                              <BarChart data={msg.rawData}>
+                                <XAxis 
+                                  dataKey={Object.keys(msg.rawData[0])[0]} 
+                                  stroke="#888888" 
+                                  fontSize={12} 
+                                  tickLine={false} 
+                                  axisLine={false} 
+                                />
+                                <YAxis 
+                                  stroke="#888888" 
+                                  fontSize={12} 
+                                  tickLine={false} 
+                                  axisLine={false} 
+                                  tickFormatter={(value) => `$${value}`} 
+                                />
+                                <RechartsTooltip 
+                                  contentStyle={{ backgroundColor: '#18181b', border: '1px solid #27272a', borderRadius: '8px' }} 
+                                />
+                                <Bar 
+                                  dataKey={Object.keys(msg.rawData[0])[1]} 
+                                  fill="#8b5cf6" 
+                                  radius={[4, 4, 0, 0]} 
+                                />
+                              </BarChart>
+                            </ResponsiveContainer>
+                          </div>
+                        )}
+
+                        {chartViews[msg.id] === 'pie' && (
+                          <div className="h-64 p-4">
+                            <ResponsiveContainer width="100%" height="100%">
+                              <PieChart>
+                                <Pie
+                                  data={msg.rawData}
+                                  dataKey={Object.keys(msg.rawData[0])[1]}
+                                  nameKey={Object.keys(msg.rawData[0])[0]}
+                                  cx="50%"
+                                  cy="50%"
+                                  outerRadius={80}
+                                  fill="#8b5cf6"
+                                  label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
+                                >
+                                  {msg.rawData.map((entry, index) => (
+                                    <Cell key={`cell-${index}`} fill={['#8b5cf6', '#ec4899', '#3b82f6', '#10b981', '#f59e0b', '#6366f1'][index % 6]} />
+                                  ))}
+                                </Pie>
+                                <RechartsTooltip 
+                                  contentStyle={{ backgroundColor: '#18181b', border: '1px solid #27272a', borderRadius: '8px' }} 
+                                />
+                              </PieChart>
+                            </ResponsiveContainer>
+                          </div>
+                        )}
                       </div>
                     )}
                   </div>

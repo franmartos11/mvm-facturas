@@ -17,6 +17,18 @@ interface InvoiceRowProps {
   invoice: any;
 }
 
+const getCategoryColor = (category?: string) => {
+  switch (category?.toLowerCase()) {
+    case 'alimentación': return 'bg-orange-100 text-orange-700 border-orange-200';
+    case 'hogar': return 'bg-yellow-100 text-yellow-700 border-yellow-200';
+    case 'tecnología': return 'bg-blue-100 text-blue-700 border-blue-200';
+    case 'transporte': return 'bg-emerald-100 text-emerald-700 border-emerald-200';
+    case 'salud': return 'bg-rose-100 text-rose-700 border-rose-200';
+    case 'servicios': return 'bg-cyan-100 text-cyan-700 border-cyan-200';
+    default: return 'bg-slate-100 text-slate-700 border-slate-200';
+  }
+};
+
 export default function InvoiceRow({ invoice }: InvoiceRowProps) {
   const router = useRouter();
   const [isAnalyzing, setIsAnalyzing] = useState(false);
@@ -130,6 +142,11 @@ export default function InvoiceRow({ invoice }: InvoiceRowProps) {
               {invoice.status === 'invalid' && (
                 <span className="text-[10px] bg-zinc-100 text-zinc-700 px-1.5 py-0.5 rounded-full font-medium border border-zinc-200">
                   No es factura
+                </span>
+              )}
+              {invoice.category && (
+                <span className={`text-[10px] px-2 py-0.5 rounded-full font-semibold border ${getCategoryColor(invoice.category)}`}>
+                  {invoice.category}
                 </span>
               )}
             </div>
