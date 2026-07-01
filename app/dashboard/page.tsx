@@ -131,12 +131,12 @@ export default function AnalyticsDashboard() {
                     paddingAngle={5}
                   >
                     {categories.map((_: any, index: number) => (
-                      <Cell key={\`cell-\${index}\`} fill={COLORS[index % COLORS.length]} />
+                      <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                     ))}
                   </Pie>
                   <Tooltip 
                     contentStyle={{ backgroundColor: 'hsl(var(--card))', border: '1px solid hsl(var(--border))', borderRadius: '12px', color: 'hsl(var(--foreground))' }}
-                    formatter={(value: any) => [\`$\${Number(value).toFixed(2)}\`, 'Monto']}
+                    formatter={(value: any) => [`$${Number(value).toFixed(2)}`, 'Monto']}
                   />
                 </PieChart>
               </ResponsiveContainer>

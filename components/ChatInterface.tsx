@@ -444,7 +444,7 @@ export default function ChatInterface() {
                                   cy="50%"
                                   outerRadius={80}
                                   fill="#8b5cf6"
-                                  label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
+                                  label={({ name, percent }) => `${name} ${((percent || 0) * 100).toFixed(0)}%`}
                                 >
                                   {msg.rawData.map((entry, index) => (
                                     <Cell key={`cell-${index}`} fill={['#8b5cf6', '#ec4899', '#3b82f6', '#10b981', '#f59e0b', '#6366f1'][index % 6]} />

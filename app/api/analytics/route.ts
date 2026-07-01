@@ -19,7 +19,7 @@ export async function GET() {
         SUM(CASE WHEN date_trunc('month', invoice_date) = date_trunc('month', CURRENT_DATE - INTERVAL '1 month') THEN total ELSE 0 END) as prev_month
       FROM invoices 
       WHERE user_id = $1 AND status = 'analyzed'
-    `, [user.userId]);
+    `, [user.id]);
 
     // 2. Expenses by Month (Last 6 months)
     const monthlyQuery = await query(`
@@ -30,7 +30,7 @@ export async function GET() {
       WHERE user_id = $1 AND status = 'analyzed' AND invoice_date >= date_trunc('month', CURRENT_DATE - INTERVAL '5 months')
       GROUP BY date_trunc('month', invoice_date)
       ORDER BY date_trunc('month', invoice_date)
-    `, [user.userId]);
+    `, [user.id]);
 
     // 3. Expenses by Category (All time or current month? Let's do all time for now)
     const categoryQuery = await query(`
@@ -41,7 +41,7 @@ export async function GET() {
       WHERE user_id = $1 AND status = 'analyzed' AND category IS NOT NULL
       GROUP BY category
       ORDER BY total DESC
-    `, [user.userId]);
+    `, [user.id]);
 
     // 4. Top Suppliers
     const suppliersQuery = await query(`
@@ -54,7 +54,7 @@ export async function GET() {
       GROUP BY supplier
       ORDER BY total DESC
       LIMIT 5
-    `, [user.userId]);
+    `, [user.id]);
 
     return NextResponse.json({
       totals: {
