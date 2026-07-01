@@ -254,7 +254,7 @@ export default function ChatInterface() {
       {/* Main Chat Area */}
       <div className="flex-1 flex flex-col min-w-0 max-w-5xl mx-auto px-4 pb-0 relative">
         {/* Header */}
-        <div className="py-6 flex items-center justify-between border-b border-white/5 pl-4 z-10 relative">
+        <div className="shrink-0 py-6 flex items-center justify-between border-b border-white/5 pl-4 z-10 relative">
           <div className="flex items-center gap-5">
             <button 
               onClick={() => setIsSidebarOpen(!isSidebarOpen)}
@@ -304,8 +304,8 @@ export default function ChatInterface() {
               </div>
 
               {/* Bubble */}
-              <div className={`flex-1 max-w-[85%] ${msg.role === 'user' ? 'items-end' : 'items-start'} flex flex-col gap-3`}>
-                <div className={`px-6 py-4 leading-relaxed text-[15px] shadow-sm ${
+              <div className={`max-w-[85%] ${msg.role === 'user' ? 'items-end' : 'items-start'} flex flex-col gap-3`}>
+                <div className={`w-fit px-6 py-4 leading-relaxed text-[15px] shadow-sm ${
                   msg.role === 'user'
                     ? 'bg-gradient-to-r from-indigo-500 to-purple-600 text-white rounded-3xl rounded-tr-md'
                     : 'bg-zinc-900 border border-zinc-800 rounded-3xl rounded-tl-md text-foreground/90'
@@ -370,7 +370,7 @@ export default function ChatInterface() {
 
         {/* Suggested Questions (shown only when chat is at welcome state) */}
         {messages.length === 1 && (
-          <div className="pb-8 px-4 z-10 relative">
+          <div className="shrink-0 pb-8 px-4 z-10 relative">
             <p className="text-[11px] text-foreground/40 mb-4 font-bold uppercase tracking-widest pl-2">Preguntas sugeridas</p>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               {SUGGESTED_QUESTIONS.map(q => (
@@ -387,7 +387,7 @@ export default function ChatInterface() {
         )}
 
         {/* Input */}
-        <div className="pb-10 pt-4 z-10 relative px-4 bg-gradient-to-t from-[#0a0a0a] via-[#0a0a0a] to-transparent">
+        <div className="shrink-0 pb-10 pt-4 z-10 relative px-4 bg-gradient-to-t from-[#0a0a0a] via-[#0a0a0a] to-transparent">
           <div className="relative flex items-end gap-4 bg-white/5 backdrop-blur-xl border border-white/10 rounded-[28px] p-3 focus-within:border-violet-500/50 focus-within:ring-4 focus-within:ring-violet-500/10 transition-all duration-300 shadow-[0_8px_30px_rgba(0,0,0,0.4)]">
             <textarea
               ref={inputRef}
