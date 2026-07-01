@@ -20,7 +20,6 @@ interface InvoiceRowProps {
 export default function InvoiceRow({ invoice }: InvoiceRowProps) {
   const router = useRouter();
   const [isAnalyzing, setIsAnalyzing] = useState(false);
-  const [isExpanded, setIsExpanded] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [showPreviewModal, setShowPreviewModal] = useState(false);
 
@@ -31,8 +30,7 @@ export default function InvoiceRow({ invoice }: InvoiceRowProps) {
       if (res && !res.success) {
         alert('Error al analizar la factura: ' + res.error);
       } else {
-        router.refresh();
-        setIsExpanded(true); // Auto expand on success
+        router.push(`/invoices/${invoice.id}`);
       }
     } catch (error) {
       alert('Error inesperado al intentar comunicarse con el servidor.');
@@ -51,8 +49,7 @@ export default function InvoiceRow({ invoice }: InvoiceRowProps) {
       if (res && !res.success) {
         alert('Error al re-analizar la factura: ' + res.error);
       } else {
-        router.refresh();
-        setIsExpanded(true);
+        router.push(`/invoices/${invoice.id}`);
       }
     } catch (error) {
       alert('Error inesperado al intentar comunicarse con el servidor.');
@@ -91,7 +88,7 @@ export default function InvoiceRow({ invoice }: InvoiceRowProps) {
       <div className="flex flex-col border-b border-border last:border-0">
       <div 
         className="flex items-center justify-between p-4 hover:bg-accent/50 transition-colors cursor-pointer"
-        onClick={() => invoice.status === 'analyzed' && setIsExpanded(!isExpanded)}
+        onClick={() => invoice.status === 'analyzed' && router.push(`/invoices/${invoice.id}`)}
       >
         <div className="flex items-center gap-4 min-w-0">
           <div className="w-10 h-10 bg-destructive/10 rounded-lg flex items-center justify-center shrink-0">
@@ -169,10 +166,13 @@ export default function InvoiceRow({ invoice }: InvoiceRowProps) {
                  </svg>
                </button>
                <button
-                onClick={() => setIsExpanded(!isExpanded)}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  router.push(`/invoices/${invoice.id}`);
+                }}
                 className="px-3 py-1.5 text-xs font-medium rounded-md bg-secondary text-secondary-foreground hover:bg-secondary/80"
                >
-                {isExpanded ? 'Ocultar' : 'Ver Detalles'}
+                Abrir Expediente
                </button>
              </div>
           )}
@@ -213,9 +213,6 @@ export default function InvoiceRow({ invoice }: InvoiceRowProps) {
         </div>
       </div>
       
-      {isExpanded && invoice.status === 'analyzed' && (
-        <InvoiceItemsViewer invoice={invoice} />
-      )}
       
       {showPreviewModal && (
         <PdfPreviewModal

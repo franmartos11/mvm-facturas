@@ -13,7 +13,9 @@
     "bcryptjs": "^3.0.3",
     "clsx": "^2.1.1",
     "framer-motion": "^12.23.26",
+    "html2canvas": "^1.4.1",
     "jose": "^6.2.3",
+    "jspdf": "^4.2.1",
     "lucide-react": "^0.560.0",
     "next": "16.0.8",
     "openai": "^6.45.0",
@@ -23,6 +25,7 @@
     "react-dom": "19.2.1",
     "recharts": "^3.5.1",
     "tailwind-merge": "^3.4.0",
+    "use-debounce": "^10.1.1",
     "xlsx": "^0.18.5"
   },
   "devDependencies": {

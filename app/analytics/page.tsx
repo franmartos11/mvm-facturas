@@ -6,6 +6,8 @@ import BusinessKPIs from '@/components/BusinessKPIs';
 import SupplierAnalysis from '@/components/SupplierAnalysis';
 import CategoryBreakdown from '@/components/CategoryBreakdown';
 import DashboardSummary from '@/components/DashboardSummary';
+import SpendPrediction from '@/components/SpendPrediction';
+import ExportPDFButton from '@/components/ExportPDFButton';
 
 export const dynamic = 'force-dynamic';
 
@@ -16,7 +18,7 @@ export default async function AnalyticsPage() {
 
   return (
     <main className="min-h-screen p-8 bg-muted/40 font-[family-name:var(--font-geist-sans)]">
-      <div className="max-w-7xl mx-auto space-y-8">
+      <div className="max-w-7xl mx-auto space-y-8" id="analytics-report-container">
         <header className="flex flex-col sm:flex-row sm:items-center justify-between pb-6 border-b border-border gap-4">
           <div>
             <h1 className="text-3xl font-bold text-foreground tracking-tight">
@@ -25,6 +27,9 @@ export default async function AnalyticsPage() {
             <p className="text-muted-foreground mt-1">
               Métricas, tendencias y análisis de todos tus gastos.
             </p>
+          </div>
+          <div>
+            <ExportPDFButton targetId="analytics-report-container" />
           </div>
         </header>
 
@@ -42,6 +47,7 @@ export default async function AnalyticsPage() {
 
         {/* Deep Analytics */}
         <div className="space-y-6">
+          <SpendPrediction invoices={invoices || []} />
           <DashboardCharts items={items || []} invoices={invoices || []} />
           <SupplierAnalysis invoices={invoices || []} />
           <CategoryBreakdown items={items || []} invoices={invoices || []} />

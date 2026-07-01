@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { getSession } from "@/lib/auth";
 import UserDropdown from "@/components/UserDropdown";
+import GlobalSearch from "@/components/GlobalSearch";
 
 export default async function Navbar() {
   const user = await getSession();
@@ -19,9 +20,14 @@ export default async function Navbar() {
             <Link href="/analytics" className="text-muted-foreground hover:text-foreground transition-colors font-medium">
               Análisis
             </Link>
+            <Link href="/chat" className="flex items-center gap-1.5 text-muted-foreground hover:text-foreground transition-colors font-medium">
+              <span className="inline-flex w-4 h-4 bg-violet-500/20 text-violet-500 rounded-full items-center justify-center text-[9px]">✦</span>
+              Chat IA
+            </Link>
           </div>
         </div>
         <div className="flex gap-4 items-center">
+          {user && <GlobalSearch />}
           {user ? (
             <UserDropdown user={user} />
           ) : (
