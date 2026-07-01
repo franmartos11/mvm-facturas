@@ -78,14 +78,14 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  let body: { message: string; history?: { role: string; content: string }[] };
+  let body: { message: string; history?: { role: string; content: string }[]; sessionId?: number };
   try {
     body = await req.json();
   } catch {
     return NextResponse.json({ error: 'Solicitud inválida' }, { status: 400 });
   }
 
-  const { message, history = [] } = body;
+  const { message, history = [], sessionId } = body;
   if (!message?.trim()) {
     return NextResponse.json({ error: 'Mensaje vacío' }, { status: 400 });
   }
@@ -123,6 +123,35 @@ export async function POST(req: NextRequest) {
   const openai = new OpenAI({ baseURL: aiUrl, apiKey: 'lm-studio' });
 
   try {
+    let currentSessionId = sessionId;
+
+    // Create a new session if one doesn't exist
+    if (!currentSessionId) {
+      // Generate a short title using AI
+      let title = 'Nuevo Chat';
+      try {
+        const titleResponse = await openai.chat.completions.create({
+          model: aiModel,
+          messages: [{ role: 'user', content: `Resume esto en un título corto de máximo 4 palabras (solo el texto, sin comillas): "${message}"` }],
+          temperature: 0.3,
+          max_tokens: 15,
+        });
+        title = titleResponse.choices[0]?.message?.content?.trim() || 'Nuevo Chat';
+        title = title.replace(/['"]/g, ''); // remove quotes just in case
+      } catch (e) {
+        console.error('Error generating title', e);
+      }
+
+      const sessionRes = await query(
+        'INSERT INTO chat_sessions (user_id, title) VALUES ($1, $2) RETURNING id',
+        [user.id, title]
+      );
+      currentSessionId = sessionRes.rows[0].id;
+    } else {
+      // Update session updated_at
+      await query('UPDATE chat_sessions SET updated_at = now() WHERE id = $1 AND user_id = $2', [currentSessionId, user.id]);
+    }
+
     // ── Step 1: Intent Classification (hardened) ────────────────────────────
     const intentMessages: any[] = [
       {
@@ -182,15 +211,15 @@ If the question is not about financial data or invoices, return:
         'Lo siento, solo puedo responder preguntas sobre tus facturas y datos financieros del sistema.';
 
       await query(
-        'INSERT INTO chat_history (user_id, role, content) VALUES ($1, $2, $3)',
-        [user.id, 'user', message]
+        'INSERT INTO chat_history (user_id, session_id, role, content) VALUES ($1, $2, $3, $4)',
+        [user.id, currentSessionId, 'user', message]
       );
       await query(
-        'INSERT INTO chat_history (user_id, role, content) VALUES ($1, $2, $3)',
-        [user.id, 'assistant', answer]
+        'INSERT INTO chat_history (user_id, session_id, role, content) VALUES ($1, $2, $3, $4)',
+        [user.id, currentSessionId, 'assistant', answer]
       );
 
-      return NextResponse.json({ answer, sql: null });
+      return NextResponse.json({ answer, sql: null, sessionId: currentSessionId });
     }
 
     // ── Step 3: Validate SQL (hardened) ──────────────────────────────────────
@@ -246,12 +275,12 @@ If the question is not about financial data or invoices, return:
 
     // ── Step 6: Save to history ───────────────────────────────────────────────
     await query(
-      'INSERT INTO chat_history (user_id, role, content) VALUES ($1, $2, $3)',
-      [user.id, 'user', message]
+      'INSERT INTO chat_history (user_id, session_id, role, content) VALUES ($1, $2, $3, $4)',
+      [user.id, currentSessionId, 'user', message]
     );
     await query(
-      'INSERT INTO chat_history (user_id, role, content, sql_query) VALUES ($1, $2, $3, $4)',
-      [user.id, 'assistant', answer, sqlPlan.sql]
+      'INSERT INTO chat_history (user_id, session_id, role, content, sql_query) VALUES ($1, $2, $3, $4, $5)',
+      [user.id, currentSessionId, 'assistant', answer, sqlPlan.sql]
     );
 
     return NextResponse.json({
@@ -259,6 +288,7 @@ If the question is not about financial data or invoices, return:
       sql: sqlPlan.sql,
       rowCount: queryResult.length,
       rawData: queryResult.slice(0, 10),
+      sessionId: currentSessionId,
     });
   } catch (error: any) {
     console.error('Chat API error:', error);
@@ -269,13 +299,20 @@ If the question is not about financial data or invoices, return:
   }
 }
 
-export async function GET() {
+export async function GET(req: NextRequest) {
   const user = await getSession();
   if (!user) return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
 
+  const url = new URL(req.url);
+  const sessionId = url.searchParams.get('sessionId');
+
+  if (!sessionId) {
+    return NextResponse.json({ error: 'Falta sessionId' }, { status: 400 });
+  }
+
   const result = await query(
-    'SELECT role, content, sql_query, created_at FROM chat_history WHERE user_id = $1 ORDER BY created_at ASC LIMIT 100',
-    [user.id]
+    'SELECT role, content, sql_query, created_at FROM chat_history WHERE user_id = $1 AND session_id = $2 ORDER BY created_at ASC',
+    [user.id, sessionId]
   );
 
   return NextResponse.json({ history: result.rows });
