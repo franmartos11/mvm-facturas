@@ -254,27 +254,27 @@ export default function ChatInterface() {
       {/* Main Chat Area */}
       <div className="flex-1 flex flex-col min-w-0 max-w-5xl mx-auto px-4 pb-0 relative">
         {/* Header */}
-        <div className="py-5 flex items-center justify-between border-b border-white/5 pl-2 z-10 relative">
-          <div className="flex items-start gap-4">
+        <div className="py-4 flex items-center justify-between border-b border-white/5 pl-2 z-10 relative">
+          <div className="flex items-center gap-3">
             <button 
               onClick={() => setIsSidebarOpen(!isSidebarOpen)}
-              className="mt-0.5 p-2 text-foreground/50 hover:text-foreground bg-white/5 hover:bg-white/10 border border-white/5 rounded-xl transition-all duration-300 shadow-sm"
+              className="p-2.5 text-foreground/50 hover:text-foreground hover:bg-white/5 rounded-xl transition-all duration-300"
               title="Alternar panel lateral"
             >
               <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
               </svg>
             </button>
-            <div>
-              <h1 className="text-xl font-bold text-foreground flex items-center gap-3 tracking-tight">
-                <span className="inline-flex w-9 h-9 bg-gradient-to-br from-violet-500/20 to-indigo-500/20 border border-violet-500/30 text-violet-400 rounded-xl items-center justify-center shadow-[0_0_15px_rgba(139,92,246,0.15)]">
+            <div className="flex flex-col justify-center">
+              <h1 className="text-xl font-bold text-foreground flex items-center gap-2.5 tracking-tight">
+                <span className="inline-flex w-8 h-8 bg-violet-500/10 border border-violet-500/20 text-violet-400 rounded-lg items-center justify-center shadow-[0_0_15px_rgba(139,92,246,0.1)]">
                   <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
                   </svg>
                 </span>
                 Asistente Financiero
               </h1>
-              <p className="text-sm text-foreground/60 mt-1">
+              <p className="text-[13px] text-foreground/50 mt-0.5 ml-[42px]">
                 {currentSessionId 
                   ? sessions.find(s => s.id === currentSessionId)?.title 
                   : 'Haceme cualquier pregunta sobre tus facturas y gastos'
@@ -295,20 +295,20 @@ export default function ChatInterface() {
           {messages.map(msg => (
             <div key={msg.id} className={`flex gap-4 ${msg.role === 'user' ? 'flex-row-reverse' : 'flex-row'} animate-in fade-in slide-in-from-bottom-2 duration-500 ease-out`}>
               {/* Avatar */}
-              <div className={`w-9 h-9 rounded-xl shrink-0 flex items-center justify-center text-sm font-bold shadow-sm ${
+              <div className={`w-8 h-8 rounded-lg shrink-0 flex items-center justify-center text-sm font-bold shadow-sm ${
                 msg.role === 'user'
                   ? 'bg-gradient-to-br from-indigo-500 to-purple-600 text-white'
-                  : 'bg-white/5 border border-white/10 text-violet-400'
+                  : 'bg-violet-500/10 border border-violet-500/20 text-violet-400'
               }`}>
                 {msg.role === 'user' ? 'Tú' : '✦'}
               </div>
 
               {/* Bubble */}
               <div className={`flex-1 max-w-[85%] ${msg.role === 'user' ? 'items-end' : 'items-start'} flex flex-col gap-2`}>
-                <div className={`px-5 py-3.5 leading-relaxed text-sm shadow-sm ${
+                <div className={`px-4 py-3 leading-relaxed text-sm shadow-sm ${
                   msg.role === 'user'
                     ? 'bg-gradient-to-r from-indigo-500 to-purple-600 text-white rounded-2xl rounded-tr-sm'
-                    : 'bg-white/5 border border-white/10 backdrop-blur-md rounded-2xl rounded-tl-sm text-foreground/90'
+                    : 'bg-zinc-900 border border-zinc-800 rounded-2xl rounded-tl-sm text-foreground/90'
                 }`}>
                   {msg.isLoading ? (
                     <div className="flex gap-1.5 items-center py-1">
