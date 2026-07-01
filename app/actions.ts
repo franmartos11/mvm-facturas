@@ -348,8 +348,8 @@ export async function analyzeInvoice(invoiceId: number, filePath: string) {
   try {
     const userResult = await query('SELECT ai_url, ai_model FROM users WHERE id = $1', [user.id]);
     const userSettings = userResult.rows[0];
-    const localAiUrl = userSettings?.ai_url || process.env.LOCAL_AI_URL;
-    const localAiModel = userSettings?.ai_model || process.env.LOCAL_AI_MODEL || 'google/gemma-4-e4b';
+    const localAiUrl: string = String(userSettings?.ai_url || process.env.LOCAL_AI_URL || '');
+    const localAiModel: string = String(userSettings?.ai_model || process.env.LOCAL_AI_MODEL || 'google/gemma-4-e4b');
 
     if (!localAiUrl) {
       throw new Error('No hay URL de IA configurada. Por favor, configúrala en Ajustes.');

@@ -62,7 +62,7 @@ export default function SpendPrediction({ invoices }: SpendPredictionProps) {
     });
 
     let cumulative = 0;
-    const chartData = [];
+    const chartData: { day: number, real: number | null, projected: number | null }[] = [];
     
     for (let i = 1; i <= daysInMonth; i++) {
       if (i <= today) {

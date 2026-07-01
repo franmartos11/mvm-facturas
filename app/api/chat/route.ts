@@ -111,8 +111,8 @@ export async function POST(req: NextRequest) {
   // ── Get AI Config ───────────────────────────────────────────────────────────
   const userResult = await query('SELECT ai_url, ai_model FROM users WHERE id = $1', [user.id]);
   const userSettings = userResult.rows[0];
-  const aiUrl = userSettings?.ai_url || process.env.LOCAL_AI_URL;
-  const aiModel = userSettings?.ai_model || process.env.LOCAL_AI_MODEL || 'google/gemma-4-e4b';
+  const aiUrl: string = String(userSettings?.ai_url || process.env.LOCAL_AI_URL || '');
+  const aiModel: string = String(userSettings?.ai_model || process.env.LOCAL_AI_MODEL || 'google/gemma-4-e4b');
 
   if (!aiUrl) {
     return NextResponse.json({
@@ -146,7 +146,7 @@ export async function POST(req: NextRequest) {
         'INSERT INTO chat_sessions (user_id, title) VALUES ($1, $2) RETURNING id',
         [user.id, title]
       );
-      currentSessionId = sessionRes.rows[0].id;
+      currentSessionId = Number(sessionRes.rows[0].id);
     } else {
       // Update session updated_at
       await query('UPDATE chat_sessions SET updated_at = now() WHERE id = $1 AND user_id = $2', [currentSessionId, user.id]);

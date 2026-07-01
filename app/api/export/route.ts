@@ -112,7 +112,7 @@ export async function GET(request: NextRequest) {
 
     if (search) {
       const searchLower = search.toLowerCase();
-      filteredInvoices = filteredInvoices.filter(inv => {
+      filteredInvoices = filteredInvoices.filter((inv: any) => {
         return (
           inv.filename.toLowerCase().includes(searchLower) ||
           (inv.supplier && inv.supplier.toLowerCase().includes(searchLower)) ||
@@ -120,8 +120,8 @@ export async function GET(request: NextRequest) {
         );
       });
       
-      const validInvoiceIds = new Set(filteredInvoices.map(inv => inv.invoice_id));
-      filteredItems = filteredItems.filter(item => validInvoiceIds.has(item.invoice_id));
+      const validInvoiceIds = new Set(filteredInvoices.map((inv: any) => inv.invoice_id));
+      filteredItems = filteredItems.filter((item: any) => validInvoiceIds.has(item.invoice_id));
     }
 
     if (filteredInvoices.length === 0) {
@@ -129,7 +129,7 @@ export async function GET(request: NextRequest) {
     }
 
     // Prepare Data for Excel
-    const resumenData = filteredInvoices.map(row => ({
+    const resumenData = filteredInvoices.map((row: any) => ({
       'ID': row.invoice_id,
       'Archivo': row.filename,
       'Proveedor': row.supplier || 'Desconocido',
@@ -141,7 +141,7 @@ export async function GET(request: NextRequest) {
       'Etiquetas': row.tags ? row.tags.join(', ') : ''
     }));
 
-    const desgloseData = filteredItems.map(row => ({
+    const desgloseData = filteredItems.map((row: any) => ({
       'ID Factura': row.invoice_id,
       'Archivo': row.filename,
       'Proveedor': row.supplier || 'Desconocido',
