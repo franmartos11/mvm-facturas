@@ -12,7 +12,7 @@ export default async function ChatPage() {
   if (!user) redirect('/login');
 
   return (
-    <main className="min-h-screen bg-muted/40 font-[family-name:var(--font-geist-sans)]">
+    <main className="h-[calc(100vh_-_4rem)] bg-muted/40 font-[family-name:var(--font-geist-sans)]">
       <ChatInterface />
     </main>
   );

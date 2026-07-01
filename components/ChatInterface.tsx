@@ -194,7 +194,7 @@ export default function ChatInterface() {
   };
 
   return (
-    <div className="h-[calc(100vh-4rem)] flex overflow-hidden bg-background">
+    <div className="h-full flex overflow-hidden bg-background">
       {/* Sidebar */}
       <div className={`
         ${isSidebarOpen ? 'w-64' : 'w-0'} 
