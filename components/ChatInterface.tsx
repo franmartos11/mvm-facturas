@@ -200,19 +200,19 @@ export default function ChatInterface() {
   };
 
   return (
-    <div className="h-full flex overflow-hidden bg-[#0a0a0a] relative selection:bg-violet-500/30">
+    <div className="h-full flex overflow-hidden bg-background relative selection:bg-violet-500/30">
       {/* Background ambient glow */}
       <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full h-[500px] bg-violet-500/5 blur-[120px] rounded-full pointer-events-none" />
 
       {/* Sidebar */}
       <div className={`
         ${isSidebarOpen ? 'w-72' : 'w-0'} 
-        shrink-0 border-r border-white/5 bg-black/40 backdrop-blur-xl flex flex-col transition-all duration-300 overflow-hidden z-20
+        shrink-0 border-r border-border bg-muted/30 backdrop-blur-xl flex flex-col transition-all duration-300 overflow-hidden z-20
       `}>
-        <div className="p-4 border-b border-white/5">
+        <div className="p-4 border-b border-border">
           <button 
             onClick={handleNewChat}
-            className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-white/5 hover:bg-white/10 text-foreground rounded-xl font-medium transition-all duration-300 border border-white/5 shadow-sm hover:shadow-md group"
+            className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-background hover:bg-muted text-foreground rounded-xl font-medium transition-all duration-300 border border-border shadow-sm hover:shadow-md group"
           >
             <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4 text-violet-400 group-hover:scale-110 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
@@ -232,8 +232,8 @@ export default function ChatInterface() {
                 className={`
                   group flex items-center justify-between p-3 rounded-xl cursor-pointer transition-all duration-300 relative overflow-hidden
                   ${currentSessionId === session.id 
-                    ? 'bg-violet-500/10 text-violet-300 border border-violet-500/20 shadow-[inset_0_0_20px_rgba(139,92,246,0.05)]' 
-                    : 'hover:bg-white/5 text-foreground/70 hover:text-foreground border border-transparent'}
+                    ? 'bg-violet-500/10 text-violet-600 border border-violet-500/20 shadow-[inset_0_0_20px_rgba(139,92,246,0.05)]' 
+                    : 'hover:bg-background text-muted-foreground hover:text-foreground border border-transparent'}
                 `}
               >
                 <div className="flex items-center gap-2 overflow-hidden">
@@ -260,11 +260,11 @@ export default function ChatInterface() {
       {/* Main Chat Area */}
       <div className="flex-1 flex flex-col min-w-0 max-w-5xl mx-auto px-4 pb-0 relative">
         {/* Header */}
-        <div className="shrink-0 py-6 flex items-center justify-between border-b border-white/5 pl-4 z-10 relative">
+        <div className="shrink-0 py-6 flex items-center justify-between border-b border-border pl-4 z-10 relative bg-background/50 backdrop-blur-sm">
           <div className="flex items-center gap-5">
             <button 
               onClick={() => setIsSidebarOpen(!isSidebarOpen)}
-              className="p-3 text-foreground/50 hover:text-foreground hover:bg-white/5 rounded-2xl transition-all duration-300"
+              className="p-3 text-muted-foreground hover:text-foreground hover:bg-muted rounded-2xl transition-all duration-300"
               title="Alternar panel lateral"
             >
               <svg xmlns="http://www.w3.org/2000/svg" className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -297,7 +297,7 @@ export default function ChatInterface() {
         </div>
 
         {/* Messages */}
-        <div className="flex-1 overflow-y-auto pt-12 pb-10 space-y-12 px-6 z-10 relative scrollbar-thin scrollbar-thumb-white/10 scrollbar-track-transparent">
+        <div className="flex-1 overflow-y-auto pt-12 pb-10 space-y-12 px-6 z-10 relative scrollbar-thin scrollbar-thumb-muted-foreground/20 scrollbar-track-transparent">
           {messages.map(msg => (
             <div key={msg.id} className={`flex gap-6 ${msg.role === 'user' ? 'flex-row-reverse' : 'flex-row'} animate-in fade-in slide-in-from-bottom-2 duration-500 ease-out`}>
               {/* Avatar */}
@@ -314,7 +314,7 @@ export default function ChatInterface() {
                 <div className={`w-fit px-7 py-5 leading-relaxed text-[15px] shadow-sm ${
                   msg.role === 'user'
                     ? 'bg-gradient-to-r from-indigo-500 to-purple-600 text-white rounded-[24px] rounded-tr-[4px]'
-                    : 'bg-zinc-900 border border-zinc-800 rounded-[24px] rounded-tl-[4px] text-foreground/90'
+                    : 'bg-card border border-border rounded-[24px] rounded-tl-[4px] text-card-foreground shadow-sm'
                 }`}>
                   {msg.isLoading ? (
                     <div className="flex gap-1.5 items-center py-1">
@@ -340,13 +340,13 @@ export default function ChatInterface() {
                       {showSql === msg.id ? 'Ocultar query SQL' : `Ver query SQL`}
                     </button>
                     {showSql === msg.id && (
-                      <div className="mt-2 rounded-xl bg-black/50 border border-white/5 p-4 font-mono text-[11px] text-foreground/70 overflow-x-auto animate-in fade-in slide-in-from-top-1">
+                      <div className="mt-2 rounded-xl bg-muted/50 border border-border p-4 font-mono text-[11px] text-muted-foreground overflow-x-auto animate-in fade-in slide-in-from-top-1">
                         {msg.sql}
                       </div>
                     )}
                     {showSql === msg.id && msg.rawData && msg.rawData.length > 0 && (
-                      <div className="mt-2 rounded-xl border border-white/5 overflow-hidden animate-in fade-in slide-in-from-top-1 bg-black/40 backdrop-blur-md">
-                        <div className="flex items-center justify-between px-4 py-2 border-b border-white/5 bg-white/5">
+                      <div className="mt-2 rounded-xl border border-border overflow-hidden animate-in fade-in slide-in-from-top-1 bg-card backdrop-blur-md shadow-sm">
+                        <div className="flex items-center justify-between px-4 py-2 border-b border-border bg-muted/30">
                           <div className="flex items-center gap-2">
                             <button
                               onClick={() => setChartViews(prev => ({ ...prev, [msg.id]: 'table' }))}
@@ -362,14 +362,14 @@ export default function ChatInterface() {
                             </button>
                             <button
                               onClick={() => setChartViews(prev => ({ ...prev, [msg.id]: 'pie' }))}
-                              className={`text-[11px] px-2 py-1 rounded-md transition-colors ${chartViews[msg.id] === 'pie' ? 'bg-violet-500/20 text-violet-300' : 'text-foreground/50 hover:bg-white/5'}`}
+                              className={`text-[11px] px-2 py-1 rounded-md transition-colors ${chartViews[msg.id] === 'pie' ? 'bg-violet-500/20 text-violet-600' : 'text-muted-foreground hover:bg-muted'}`}
                             >
                               Gráfico Torta
                             </button>
                           </div>
                           <button
                             onClick={() => exportToCsv(`exportacion_${msg.id}`, msg.rawData!)}
-                            className="text-[11px] flex items-center gap-1.5 text-foreground/50 hover:text-green-400 transition-colors bg-white/5 hover:bg-green-500/10 px-2 py-1 rounded-md border border-white/5"
+                            className="text-[11px] flex items-center gap-1.5 text-muted-foreground hover:text-green-600 transition-colors bg-muted/50 hover:bg-green-500/10 px-2 py-1 rounded-md border border-border"
                           >
                             <svg xmlns="http://www.w3.org/2000/svg" className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
@@ -381,18 +381,18 @@ export default function ChatInterface() {
                         {(!chartViews[msg.id] || chartViews[msg.id] === 'table') && (
                           <div className="overflow-auto max-h-64">
                             <table className="w-full text-xs text-left">
-                              <thead className="bg-white/5 backdrop-blur-md sticky top-0">
+                              <thead className="bg-muted/50 backdrop-blur-md sticky top-0">
                                 <tr>
                                   {Object.keys(msg.rawData[0]).map(col => (
-                                    <th key={col} className="px-4 py-2.5 font-medium text-foreground/60">{col}</th>
+                                    <th key={col} className="px-4 py-2.5 font-medium text-muted-foreground">{col}</th>
                                   ))}
                                 </tr>
                               </thead>
-                              <tbody className="divide-y divide-white/5">
+                              <tbody className="divide-y divide-border">
                                 {msg.rawData.map((row, i) => (
-                                  <tr key={i} className="hover:bg-white/5 transition-colors">
+                                  <tr key={i} className="hover:bg-muted/50 transition-colors">
                                     {Object.values(row).map((val: any, j) => (
-                                      <td key={j} className="px-4 py-2.5 text-foreground/80">{val?.toString() ?? 'null'}</td>
+                                      <td key={j} className="px-4 py-2.5 text-foreground">{val?.toString() ?? 'null'}</td>
                                     ))}
                                   </tr>
                                 ))}
@@ -470,13 +470,13 @@ export default function ChatInterface() {
         {/* Suggested Questions (shown only when chat is at welcome state) */}
         {messages.length === 1 && (
           <div className="shrink-0 pb-8 px-4 z-10 relative">
-            <p className="text-[11px] text-foreground/40 mb-4 font-bold uppercase tracking-widest pl-2">Preguntas sugeridas</p>
+            <p className="text-[11px] text-muted-foreground mb-4 font-bold uppercase tracking-widest pl-2">Preguntas sugeridas</p>
             <div className="grid grid-cols-1 gap-4">
               {SUGGESTED_QUESTIONS.map(q => (
                 <button
                   key={q}
                   onClick={() => handleSubmit(q)}
-                  className="text-left px-6 py-4 text-[15px] border border-white/10 rounded-[20px] hover:bg-white/5 transition-all duration-300 text-foreground/80 hover:text-foreground shadow-sm bg-black/40 backdrop-blur-md hover:-translate-y-0.5 hover:shadow-lg hover:border-violet-500/40"
+                  className="text-left px-6 py-4 text-[15px] border border-border rounded-[20px] hover:bg-accent transition-all duration-300 text-foreground shadow-sm bg-card backdrop-blur-md hover:-translate-y-0.5 hover:shadow-lg hover:border-violet-500/40"
                 >
                   {q}
                 </button>
@@ -486,8 +486,8 @@ export default function ChatInterface() {
         )}
 
         {/* Input */}
-        <div className="shrink-0 pb-10 pt-4 z-10 relative px-4 bg-gradient-to-t from-[#0a0a0a] via-[#0a0a0a] to-transparent">
-          <div className="relative flex items-center gap-4 bg-white/5 backdrop-blur-xl border border-white/10 rounded-full p-2 pl-6 focus-within:border-violet-500/50 focus-within:ring-4 focus-within:ring-violet-500/10 transition-all duration-300 shadow-[0_8px_30px_rgba(0,0,0,0.4)]">
+        <div className="shrink-0 pb-10 pt-4 z-10 relative px-4 bg-gradient-to-t from-background via-background to-transparent">
+          <div className="relative flex items-center gap-4 bg-card backdrop-blur-xl border border-border rounded-full p-2 pl-6 focus-within:border-violet-500/50 focus-within:ring-4 focus-within:ring-violet-500/10 transition-all duration-300 shadow-[0_8px_30px_rgba(0,0,0,0.05)]">
             <textarea
               ref={inputRef}
               rows={1}
@@ -495,7 +495,7 @@ export default function ChatInterface() {
               onChange={e => setInput(e.target.value)}
               onKeyDown={handleKeyDown}
               placeholder="Escribe tu consulta financiera..."
-              className="flex-1 bg-transparent resize-none outline-none text-[15px] text-foreground placeholder:text-foreground/40 max-h-32 overflow-y-auto py-3 scrollbar-thin scrollbar-thumb-white/10"
+              className="flex-1 bg-transparent resize-none outline-none text-[15px] text-foreground placeholder:text-muted-foreground max-h-32 overflow-y-auto py-3 scrollbar-thin scrollbar-thumb-muted-foreground/20"
               style={{ fieldSizing: 'content' } as any}
               disabled={isLoading}
             />
@@ -504,8 +504,8 @@ export default function ChatInterface() {
               disabled={isLoading || !input.trim()}
               className={`shrink-0 w-11 h-11 flex items-center justify-center rounded-full transition-all duration-300 ${
                 isLoading || !input.trim()
-                  ? 'bg-white/5 text-foreground/30 cursor-not-allowed border border-white/5'
-                  : 'bg-violet-600 text-white hover:bg-violet-500 hover:scale-105 shadow-[0_0_20px_rgba(139,92,246,0.3)] hover:shadow-[0_0_25px_rgba(139,92,246,0.5)]'
+                  ? 'bg-muted text-muted-foreground cursor-not-allowed border border-border'
+                  : 'bg-violet-600 text-white hover:bg-violet-500 hover:scale-105 shadow-[0_0_20px_rgba(139,92,246,0.2)] hover:shadow-[0_0_25px_rgba(139,92,246,0.3)]'
               }`}
             >
               {isLoading ? (
@@ -517,7 +517,7 @@ export default function ChatInterface() {
               )}
             </button>
           </div>
-          <p className="text-[10px] text-foreground/30 text-center mt-3 uppercase tracking-widest font-bold">
+          <p className="text-[10px] text-muted-foreground text-center mt-3 uppercase tracking-widest font-bold">
             Presioná Enter para enviar · Shift+Enter para salto de línea
           </p>
         </div>

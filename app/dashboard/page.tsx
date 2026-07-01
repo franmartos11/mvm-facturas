@@ -35,10 +35,10 @@ export default function AnalyticsDashboard() {
 
   if (loading) {
     return (
-      <div className="min-h-screen p-8 bg-black flex items-center justify-center">
+      <div className="min-h-screen p-8 bg-background flex items-center justify-center">
         <div className="flex flex-col items-center gap-4">
           <div className="w-8 h-8 border-4 border-violet-500 border-t-transparent rounded-full animate-spin"></div>
-          <p className="text-white/60">Cargando métricas...</p>
+          <p className="text-muted-foreground">Cargando métricas...</p>
         </div>
       </div>
     );
@@ -53,20 +53,20 @@ export default function AnalyticsDashboard() {
   const COLORS = ['#8b5cf6', '#ec4899', '#3b82f6', '#10b981', '#f59e0b', '#6366f1'];
 
   return (
-    <div className="min-h-screen bg-black text-white p-8 font-sans">
+    <div className="min-h-screen bg-background text-foreground p-8 font-sans">
       <div className="max-w-7xl mx-auto space-y-8">
         
         {/* Header */}
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-3xl font-bold bg-gradient-to-r from-violet-400 to-purple-500 bg-clip-text text-transparent">
+            <h1 className="text-3xl font-bold text-foreground">
               Métricas Financieras
             </h1>
-            <p className="text-white/50 mt-1">Análisis detallado de tus gastos categorizados</p>
+            <p className="text-muted-foreground mt-1">Análisis detallado de tus gastos categorizados</p>
           </div>
           <button 
             onClick={() => router.push('/')}
-            className="px-4 py-2 bg-white/5 hover:bg-white/10 border border-white/10 rounded-full text-sm font-medium transition-colors"
+            className="px-4 py-2 bg-muted hover:bg-accent border border-border rounded-full text-sm font-medium transition-colors text-foreground"
           >
             ← Volver al inicio
           </button>
@@ -74,23 +74,21 @@ export default function AnalyticsDashboard() {
 
         {/* Totals Cards */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <div className="bg-white/5 border border-white/10 rounded-3xl p-6 backdrop-blur-xl relative overflow-hidden group">
-            <div className="absolute inset-0 bg-gradient-to-br from-violet-500/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
-            <h3 className="text-white/60 text-sm font-medium mb-2">Gasto Mes Actual</h3>
+          <div className="bg-card border border-border rounded-3xl p-6 shadow-sm relative overflow-hidden group">
+            <h3 className="text-muted-foreground text-sm font-medium mb-2">Gasto Mes Actual</h3>
             <div className="flex items-end gap-4">
-              <p className="text-4xl font-bold">${totals.currentMonth.toLocaleString('es-AR', { minimumFractionDigits: 2 })}</p>
-              <div className={`flex items-center gap-1 mb-1 text-sm font-medium ${diff > 0 ? 'text-red-400' : 'text-emerald-400'}`}>
+              <p className="text-4xl font-bold text-foreground">${totals.currentMonth.toLocaleString('es-AR', { minimumFractionDigits: 2 })}</p>
+              <div className={`flex items-center gap-1 mb-1 text-sm font-medium ${diff > 0 ? 'text-red-500' : 'text-emerald-500'}`}>
                 {diff > 0 ? '↑' : '↓'}
                 {Math.abs(diffPercent).toFixed(1)}% vs mes pasado
               </div>
             </div>
           </div>
           
-          <div className="bg-white/5 border border-white/10 rounded-3xl p-6 backdrop-blur-xl relative overflow-hidden group">
-            <div className="absolute inset-0 bg-gradient-to-br from-blue-500/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
-            <h3 className="text-white/60 text-sm font-medium mb-2">Total de Categorías</h3>
-            <p className="text-4xl font-bold">{categories.length}</p>
-            <p className="text-white/40 text-sm mt-1">Detectadas automáticamente</p>
+          <div className="bg-card border border-border rounded-3xl p-6 shadow-sm relative overflow-hidden group">
+            <h3 className="text-muted-foreground text-sm font-medium mb-2">Total de Categorías</h3>
+            <p className="text-4xl font-bold text-foreground">{categories.length}</p>
+            <p className="text-muted-foreground text-sm mt-1">Detectadas automáticamente</p>
           </div>
         </div>
 
@@ -98,16 +96,16 @@ export default function AnalyticsDashboard() {
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           
           {/* Monthly Trend */}
-          <div className="bg-white/5 border border-white/10 rounded-3xl p-6 backdrop-blur-xl">
-            <h3 className="text-lg font-semibold mb-6">Tendencia de Gastos (6 meses)</h3>
+          <div className="bg-card border border-border rounded-3xl p-6 shadow-sm">
+            <h3 className="text-lg font-semibold mb-6 text-foreground">Tendencia de Gastos (6 meses)</h3>
             <div className="h-72">
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={monthly}>
-                  <XAxis dataKey="month" stroke="#ffffff40" fontSize={12} tickLine={false} axisLine={false} />
-                  <YAxis stroke="#ffffff40" fontSize={12} tickLine={false} axisLine={false} tickFormatter={val => \`$\${val}\`} />
+                  <XAxis dataKey="month" stroke="hsl(var(--muted-foreground))" fontSize={12} tickLine={false} axisLine={false} />
+                  <YAxis stroke="hsl(var(--muted-foreground))" fontSize={12} tickLine={false} axisLine={false} tickFormatter={val => \`$\${val}\`} />
                   <Tooltip 
-                    contentStyle={{ backgroundColor: '#18181b', border: '1px solid #27272a', borderRadius: '12px' }}
-                    itemStyle={{ color: '#fff' }}
+                    contentStyle={{ backgroundColor: 'hsl(var(--card))', border: '1px solid hsl(var(--border))', borderRadius: '12px', color: 'hsl(var(--foreground))' }}
+                    itemStyle={{ color: 'hsl(var(--foreground))' }}
                     formatter={(value: any) => [\`$\${Number(value).toFixed(2)}\`, 'Total']}
                   />
                   <Bar dataKey="total" fill="#8b5cf6" radius={[6, 6, 0, 0]} />
@@ -117,8 +115,8 @@ export default function AnalyticsDashboard() {
           </div>
 
           {/* Categories Pie */}
-          <div className="bg-white/5 border border-white/10 rounded-3xl p-6 backdrop-blur-xl">
-            <h3 className="text-lg font-semibold mb-6">Distribución por Categoría</h3>
+          <div className="bg-card border border-border rounded-3xl p-6 shadow-sm">
+            <h3 className="text-lg font-semibold mb-6 text-foreground">Distribución por Categoría</h3>
             <div className="h-72">
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
@@ -137,7 +135,7 @@ export default function AnalyticsDashboard() {
                     ))}
                   </Pie>
                   <Tooltip 
-                    contentStyle={{ backgroundColor: '#18181b', border: '1px solid #27272a', borderRadius: '12px' }}
+                    contentStyle={{ backgroundColor: 'hsl(var(--card))', border: '1px solid hsl(var(--border))', borderRadius: '12px', color: 'hsl(var(--foreground))' }}
                     formatter={(value: any) => [\`$\${Number(value).toFixed(2)}\`, 'Monto']}
                   />
                 </PieChart>
@@ -147,28 +145,28 @@ export default function AnalyticsDashboard() {
         </div>
 
         {/* Top Suppliers Table */}
-        <div className="bg-white/5 border border-white/10 rounded-3xl p-6 backdrop-blur-xl overflow-hidden">
-          <h3 className="text-lg font-semibold mb-6">Top Proveedores (Mayor gasto)</h3>
+        <div className="bg-card border border-border rounded-3xl p-6 shadow-sm overflow-hidden">
+          <h3 className="text-lg font-semibold mb-6 text-foreground">Top Proveedores (Mayor gasto)</h3>
           <div className="overflow-x-auto">
             <table className="w-full text-sm text-left">
-              <thead className="bg-white/5 border-b border-white/5 text-white/60">
+              <thead className="bg-muted border-b border-border text-muted-foreground">
                 <tr>
                   <th className="px-6 py-4 font-medium rounded-tl-xl">Proveedor</th>
                   <th className="px-6 py-4 font-medium">Facturas</th>
                   <th className="px-6 py-4 font-medium rounded-tr-xl">Monto Total</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-white/5">
+              <tbody className="divide-y divide-border">
                 {suppliers.map((sup: any, i: number) => (
-                  <tr key={i} className="hover:bg-white/[0.02] transition-colors">
-                    <td className="px-6 py-4 font-medium">{sup.supplier}</td>
-                    <td className="px-6 py-4 text-white/70">{sup.count}</td>
-                    <td className="px-6 py-4 text-violet-400 font-semibold">${sup.total.toLocaleString('es-AR', { minimumFractionDigits: 2 })}</td>
+                  <tr key={i} className="hover:bg-muted/50 transition-colors">
+                    <td className="px-6 py-4 font-medium text-foreground">{sup.supplier}</td>
+                    <td className="px-6 py-4 text-muted-foreground">{sup.count}</td>
+                    <td className="px-6 py-4 text-violet-600 font-semibold">${sup.total.toLocaleString('es-AR', { minimumFractionDigits: 2 })}</td>
                   </tr>
                 ))}
                 {suppliers.length === 0 && (
                   <tr>
-                    <td colSpan={3} className="px-6 py-8 text-center text-white/40">No hay suficientes datos de proveedores.</td>
+                    <td colSpan={3} className="px-6 py-8 text-center text-muted-foreground">No hay suficientes datos de proveedores.</td>
                   </tr>
                 )}
               </tbody>
