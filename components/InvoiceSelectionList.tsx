@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { analyzeInvoice, deleteInvoice } from '@/app/actions';
 import InvoiceRow from './InvoiceRow';
@@ -63,6 +63,27 @@ export default function InvoiceSelectionList({ invoices }: InvoiceSelectionListP
 
     return true;
   });
+
+  // Detect duplicates
+  const duplicateIds = useMemo(() => {
+    const analyzed = invoices.filter(inv => inv.status === 'analyzed' && inv.supplier && inv.total);
+    const groups: Record<string, number[]> = {};
+    
+    analyzed.forEach(inv => {
+      const dateStr = inv.invoice_date ? new Date(inv.invoice_date).toISOString().split('T')[0] : '';
+      const key = `${inv.supplier.toLowerCase()}|${dateStr}|${Number(inv.total).toFixed(2)}`;
+      if (!groups[key]) groups[key] = [];
+      groups[key].push(inv.id);
+    });
+
+    const duplicates = new Set<number>();
+    Object.values(groups).forEach(ids => {
+      if (ids.length > 1) {
+        ids.forEach(id => duplicates.add(id));
+      }
+    });
+    return duplicates;
+  }, [invoices]);
 
   const toggleSelection = (id: number) => {
     setSelectedIds(prev => 
@@ -158,6 +179,27 @@ export default function InvoiceSelectionList({ invoices }: InvoiceSelectionListP
         isDestructive={true}
       />
       <div className="space-y-4">
+      {/* Duplicate Warning Banner */}
+      {duplicateIds.size > 0 && (
+        <div className="bg-orange-50 dark:bg-orange-950/30 border border-orange-200 dark:border-orange-900 rounded-xl p-4 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="p-2 bg-orange-100 dark:bg-orange-900 rounded-full text-orange-600 dark:text-orange-400">
+              <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+              </svg>
+            </div>
+            <div>
+              <p className="text-sm font-semibold text-orange-800 dark:text-orange-300">
+                Posibles facturas duplicadas
+              </p>
+              <p className="text-xs text-orange-700 dark:text-orange-400 mt-0.5">
+                Hemos detectado {duplicateIds.size} facturas con el mismo proveedor, fecha y monto.
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Filters and Selection Toggle */}
       <div className="flex flex-col gap-4">
         <InvoiceFilters invoices={invoices} onFilterChange={setFilters} />
@@ -278,7 +320,7 @@ export default function InvoiceSelectionList({ invoices }: InvoiceSelectionListP
                  
                  {/* InvoiceRow Content */}
                  <div className={`flex-1 min-w-0 ${isAnalyzed ? 'opacity-75 grayscale-[0.3] hover:grayscale-0 transition-all' : ''}`}>
-                    <InvoiceRow invoice={invoice} />
+                    <InvoiceRow invoice={invoice} isDuplicate={duplicateIds.has(invoice.id)} />
                  </div>
               </div>
             );

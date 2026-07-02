@@ -29,7 +29,7 @@ export default async function AnalyticsPage() {
             </p>
           </div>
           <div>
-            <ExportPDFButton targetId="analytics-report-container" />
+            <ExportPDFButton invoices={invoices || []} />
           </div>
         </header>
 

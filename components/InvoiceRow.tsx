@@ -15,6 +15,7 @@ import TagEditor from './TagEditor';
 
 interface InvoiceRowProps {
   invoice: any;
+  isDuplicate?: boolean;
 }
 
 const getCategoryColor = (category?: string) => {
@@ -29,7 +30,7 @@ const getCategoryColor = (category?: string) => {
   }
 };
 
-export default function InvoiceRow({ invoice }: InvoiceRowProps) {
+export default function InvoiceRow({ invoice, isDuplicate = false }: InvoiceRowProps) {
   const router = useRouter();
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
@@ -109,8 +110,16 @@ export default function InvoiceRow({ invoice }: InvoiceRowProps) {
             </svg>
           </div>
           <div className="min-w-0">
-            <p className="font-medium text-foreground truncate">
+            <p className="font-medium text-foreground truncate flex items-center gap-2">
               {invoice.filename}
+              {isDuplicate && (
+                <span className="text-[10px] bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400 px-1.5 py-0.5 rounded-full font-medium border border-orange-200 dark:border-orange-800 flex items-center gap-1">
+                  <svg xmlns="http://www.w3.org/2000/svg" className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                  </svg>
+                  Posible duplicado
+                </span>
+              )}
             </p>
             <TagEditor invoiceId={invoice.id} initialTags={invoice.tags} />
             <div className="flex items-center gap-2">

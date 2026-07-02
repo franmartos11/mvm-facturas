@@ -14,6 +14,7 @@ import {
   Cell,
   Legend,
 } from 'recharts';
+import SupplierComparer from './SupplierComparer';
 
 interface SupplierAnalysisProps {
   invoices: any[];
@@ -26,12 +27,14 @@ const COLORS = [
 
 export default function SupplierAnalysis({ invoices }: SupplierAnalysisProps) {
   const [isOpen, setIsOpen] = useState(false);
+  const [compareA, setCompareA] = useState('');
+  const [compareB, setCompareB] = useState('');
 
-  const { rankingData, concentrationData, frequencyData, totalSpend } = useMemo(() => {
+  const { rankingData, concentrationData, frequencyData, totalSpend, uniqueSuppliers } = useMemo(() => {
     const analyzed = invoices.filter(inv => inv.status === 'analyzed' && inv.supplier);
 
     if (analyzed.length === 0) {
-      return { rankingData: [], concentrationData: [], frequencyData: [], totalSpend: 0 };
+      return { rankingData: [], concentrationData: [], frequencyData: [], totalSpend: 0, uniqueSuppliers: [] };
     }
 
     const supplierMap: Record<string, { total: number; count: number; lastDate: string }> = {};
@@ -79,6 +82,7 @@ export default function SupplierAnalysis({ invoices }: SupplierAnalysisProps) {
       concentrationData: pieData,
       frequencyData: freqData,
       totalSpend: total,
+      uniqueSuppliers: sorted.map(s => s.name)
     };
   }, [invoices]);
 
@@ -204,6 +208,51 @@ export default function SupplierAnalysis({ invoices }: SupplierAnalysisProps) {
                 </BarChart>
               </ResponsiveContainer>
             </div>
+          </div>
+
+          {/* Supplier Comparer */}
+          <div className="pt-6 border-t border-border mt-8">
+            <div className="flex flex-col md:flex-row items-center justify-between gap-4 mb-4">
+              <div>
+                <h4 className="text-sm font-semibold text-foreground">Comparar Proveedores</h4>
+                <p className="text-xs text-muted-foreground">Seleccioná dos proveedores para ver un análisis frente a frente.</p>
+              </div>
+              <div className="flex items-center gap-3 w-full md:w-auto">
+                <select 
+                  className="bg-background border border-border text-foreground text-sm rounded-lg focus:ring-primary focus:border-primary block w-full p-2.5"
+                  value={compareA}
+                  onChange={(e) => setCompareA(e.target.value)}
+                >
+                  <option value="">Proveedor A</option>
+                  {uniqueSuppliers.map(s => (
+                    <option key={s} value={s} disabled={s === compareB}>{s}</option>
+                  ))}
+                </select>
+                <span className="text-muted-foreground text-sm font-bold">VS</span>
+                <select 
+                  className="bg-background border border-border text-foreground text-sm rounded-lg focus:ring-primary focus:border-primary block w-full p-2.5"
+                  value={compareB}
+                  onChange={(e) => setCompareB(e.target.value)}
+                >
+                  <option value="">Proveedor B</option>
+                  {uniqueSuppliers.map(s => (
+                    <option key={s} value={s} disabled={s === compareA}>{s}</option>
+                  ))}
+                </select>
+              </div>
+            </div>
+
+            {compareA && compareB ? (
+              <SupplierComparer invoices={invoices} supplierA={compareA} supplierB={compareB} />
+            ) : (
+              <div className="bg-muted/30 border border-dashed border-border rounded-xl p-8 flex flex-col items-center justify-center text-center mt-4">
+                <svg className="w-10 h-10 text-muted-foreground mb-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                </svg>
+                <p className="text-sm font-medium text-foreground">Elegí dos proveedores arriba</p>
+                <p className="text-xs text-muted-foreground mt-1">Para compararlos cara a cara</p>
+              </div>
+            )}
           </div>
         </div>
       )}
