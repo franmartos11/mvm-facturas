@@ -21,6 +21,9 @@ CREATE TABLE IF NOT EXISTS invoices (
   subtotal NUMERIC,
   tax NUMERIC,
   total NUMERIC,
+  payment_method TEXT,
+  currency TEXT DEFAULT 'ARS',
+  due_date DATE,
   file_hash TEXT,
   tags TEXT[],
   created_at TIMESTAMPTZ DEFAULT NOW()

@@ -8,6 +8,10 @@ import CategoryBreakdown from '@/components/CategoryBreakdown';
 import DashboardSummary from '@/components/DashboardSummary';
 import SpendPrediction from '@/components/SpendPrediction';
 import ExportPDFButton from '@/components/ExportPDFButton';
+import TaxReport from '@/components/TaxReport';
+import PaymentMethodsPie from '@/components/PaymentMethodsPie';
+import ExpenseHeatmap from '@/components/ExpenseHeatmap';
+import ProductPriceTracker from '@/components/ProductPriceTracker';
 
 export const dynamic = 'force-dynamic';
 
@@ -49,8 +53,19 @@ export default async function AnalyticsPage() {
         <div className="space-y-6">
           <SpendPrediction invoices={invoices || []} />
           <DashboardCharts items={items || []} invoices={invoices || []} />
+          
+          {/* Advanced Analytics Grid */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <ExpenseHeatmap invoices={invoices || []} />
+            <PaymentMethodsPie invoices={invoices || []} />
+          </div>
+
+          <ProductPriceTracker />
+          
           <SupplierAnalysis invoices={invoices || []} />
           <CategoryBreakdown items={items || []} invoices={invoices || []} />
+          
+          <TaxReport invoices={invoices || []} />
         </div>
       </div>
     </main>

@@ -339,6 +339,25 @@ export async function globalSearch(q: string) {
   };
 }
 
+export async function trackProductPrice(productName: string) {
+  const user = await getSession();
+  if (!user || !productName.trim()) return [];
+
+  const queryTerm = `%${productName.trim()}%`;
+
+  const itemsRes = await query(`
+    SELECT ii.id, ii.description, ii.unit_price, ii.quantity, ii.total_price, inv.invoice_date, inv.created_at, inv.supplier, inv.filename
+    FROM invoice_items ii
+    JOIN invoices inv ON inv.id = ii.invoice_id
+    WHERE inv.user_id = $1
+      AND inv.status = 'analyzed'
+      AND ii.description ILIKE $2
+    ORDER BY COALESCE(inv.invoice_date, inv.created_at::date) ASC
+  `, [user.id, queryTerm]);
+
+  return itemsRes.rows;
+}
+
 // ─── AI Analysis ──────────────────────────────────────────────────────────────
 
 export async function analyzeInvoice(invoiceId: number, filePath: string) {
@@ -404,14 +423,20 @@ ${HARDENED_INVOICE_ANALYSIS_PREAMBLE}
       2. El nombre del PROVEEDOR (ej: Mercadona, Endesa, Farmacia X). Si no es obvio, pon "Desconocido".
       3. La fecha de la factura en formato YYYY-MM-DD. Si no hay, pon null.
       4. El subtotal, los impuestos (IVA/tax) y el total final. Si no están claros, pon null o 0.
-      5. Una categoría PRINCIPAL para TODA LA FACTURA, seleccionando una de estas: "Alimentación", "Hogar", "Tecnología", "Transporte", "Salud", "Servicios" u "Otros".
-      6. Los ítems comprados, asignando a cada uno una de esas mismas categorías.
+      5. La forma de pago (payment_method): Efectivo, Tarjeta, Transferencia, Cuenta Corriente, u Otro.
+      6. La moneda (currency): ARS, USD, EUR, etc.
+      7. La fecha de vencimiento (due_date) en formato YYYY-MM-DD. Si no hay, pon null.
+      8. Una categoría PRINCIPAL para TODA LA FACTURA, seleccionando una de estas: "Alimentación", "Hogar", "Tecnología", "Transporte", "Salud", "Servicios" u "Otros".
+      9. Los ítems comprados, asignando a cada uno una de esas mismas categorías.
 
       Devuélveme SOLO un JSON válido con esta estructura exacta (nada más, ni markdown, ni texto adicional):
       {
         "is_invoice": true,
         "supplier": "Nombre Proveedor",
         "invoice_date": "2023-12-01",
+        "due_date": "2023-12-15",
+        "payment_method": "Tarjeta",
+        "currency": "ARS",
         "invoice_category": "Servicios",
         "subtotal": 100.00,
         "tax": 21.00,
@@ -473,12 +498,15 @@ ${HARDENED_INVOICE_ANALYSIS_PREAMBLE}
     const subtotal = Number(parsedData.subtotal) || 0;
     const tax = Number(parsedData.tax) || 0;
     const total = Number(parsedData.total) || 0;
+    const paymentMethod = parsedData.payment_method || 'Desconocido';
+    const currency = parsedData.currency || 'ARS';
+    const dueDate = parsedData.due_date || null;
 
     await query(
       `UPDATE invoices 
-       SET status = 'analyzed', supplier = $1, invoice_date = $2, subtotal = $3, tax = $4, total = $5, category = $6
-       WHERE id = $7`,
-      [supplier, invoiceDate, subtotal, tax, total, invoiceCategory, invoiceId]
+       SET status = 'analyzed', supplier = $1, invoice_date = $2, subtotal = $3, tax = $4, total = $5, category = $6, payment_method = $7, currency = $8, due_date = $9
+       WHERE id = $10`,
+      [supplier, invoiceDate, subtotal, tax, total, invoiceCategory, paymentMethod, currency, dueDate, invoiceId]
     );
 
     // Insertar ítems
