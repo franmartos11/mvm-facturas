@@ -78,14 +78,14 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  let body: { message: string; history?: { role: string; content: string }[]; sessionId?: number };
+  let body: { message: string; history?: { role: string; content: string }[]; sessionId?: number; attachedInvoiceIds?: number[] };
   try {
     body = await req.json();
   } catch {
     return NextResponse.json({ error: 'Solicitud inválida' }, { status: 400 });
   }
 
-  const { message, history = [], sessionId } = body;
+  const { message, history = [], sessionId, attachedInvoiceIds = [] } = body;
   if (!message?.trim()) {
     return NextResponse.json({ error: 'Mensaje vacío' }, { status: 400 });
   }
@@ -127,7 +127,6 @@ export async function POST(req: NextRequest) {
 
     // Create a new session if one doesn't exist
     if (!currentSessionId) {
-      // Generate a short title using AI
       let title = 'Nuevo Chat';
       try {
         const titleResponse = await openai.chat.completions.create({
@@ -137,7 +136,7 @@ export async function POST(req: NextRequest) {
           max_tokens: 15,
         });
         title = titleResponse.choices[0]?.message?.content?.trim() || 'Nuevo Chat';
-        title = title.replace(/['"]/g, ''); // remove quotes just in case
+        title = title.replace(/['"]/g, '');
       } catch (e) {
         console.error('Error generating title', e);
       }
@@ -148,67 +147,103 @@ export async function POST(req: NextRequest) {
       );
       currentSessionId = Number(sessionRes.rows[0].id);
     } else {
-      // Update session updated_at
       await query('UPDATE chat_sessions SET updated_at = now() WHERE id = $1 AND user_id = $2', [currentSessionId, user.id]);
     }
 
-    // ── Step 1: Intent Classification (hardened) ────────────────────────────
-    const intentMessages: any[] = [
+    // ── Fetch attached invoices context ────────────────────────────────────
+    let attachedContext = '';
+    const validAttachedIds: { id: number; supplier: string; invoice_date: string; invoice_number: string | null }[] = [];
+
+    if (attachedInvoiceIds.length > 0) {
+      // Limit to 3 invoices max to avoid context overflow
+      const safeIds = attachedInvoiceIds.slice(0, 3).filter(id => Number.isInteger(id) && id > 0);
+      if (safeIds.length > 0) {
+        const invRes = await query(
+          `SELECT id, supplier, invoice_date, invoice_number, total FROM invoices WHERE id = ANY($1::int[]) AND user_id = $2`,
+          [safeIds, user.id]
+        );
+        const itemsRes = await query(
+          `SELECT invoice_id, description, quantity, unit_price, total_price FROM invoice_items WHERE invoice_id = ANY($1::int[]) ORDER BY invoice_id, id`,
+          [safeIds]
+        );
+
+        const itemsByInvoice: Record<number, any[]> = {};
+        for (const row of itemsRes.rows) {
+          if (!itemsByInvoice[row.invoice_id]) itemsByInvoice[row.invoice_id] = [];
+          itemsByInvoice[row.invoice_id].push(row);
+        }
+
+        const contextBlocks = invRes.rows.map(inv => {
+          validAttachedIds.push({ id: inv.id, supplier: inv.supplier, invoice_date: inv.invoice_date, invoice_number: inv.invoice_number });
+          const dateStr = inv.invoice_date ? new Date(inv.invoice_date).toLocaleDateString('es-ES') : 'Sin fecha';
+          const items = (itemsByInvoice[inv.id] || []).map((it: any) =>
+            `  - ${it.description} | Cant: ${it.quantity} | P.Unit: $${Number(it.unit_price).toFixed(2)} | Total: $${Number(it.total_price).toFixed(2)}`
+          ).join('\n');
+          return `Factura ID=${inv.id} — ${inv.supplier}${inv.invoice_number ? ` (${inv.invoice_number})` : ''}, Fecha: ${dateStr}, Total: $${Number(inv.total).toFixed(2)}\nProductos:\n${items || '  (sin items)'}`;
+        });
+
+        if (contextBlocks.length > 0) {
+          attachedContext = `\n\nCONTEXTO — El usuario adjuntó las siguientes facturas para consultar:
+${contextBlocks.join('\n\n')}`;
+        }
+      }
+    }
+
+    // ── Step 1: Generate SQL ─────────────────────────────────────────────────
+    // Ask the model to output ONLY a SQL SELECT — no JSON, no wrappers.
+    // We then extract the SELECT via regex, which works even if the model
+    // adds extra text or markdown around it.
+    const sqlMessages: any[] = [
       {
         role: 'system',
-        content: HARDENED_CHAT_SYSTEM_PROMPT(user.id, DB_SCHEMA(user.id)),
+        content: `${HARDENED_CHAT_SYSTEM_PROMPT(user.id, DB_SCHEMA(user.id))}${attachedContext}
+
+Your task: write a single PostgreSQL SELECT query that answers the user's question.
+Output ONLY the raw SQL query, nothing else. No explanations, no markdown, no JSON.
+If the question can be answered DIRECTLY from the CONTEXT above (attached invoices) without needing a DB query, output exactly the word: NO_SQL
+If the question is NOT about financial data or invoices at all, output exactly the word: NO_SQL`,
       },
       ...history.slice(-6).map(h => ({ role: h.role, content: h.content })),
-      {
-        role: 'user',
-        content: message,
-      },
+      { role: 'user', content: message },
     ];
-
-    // Add the SQL generation instruction
-    intentMessages.push({
-      role: 'system',
-      content: `Based on the user question above, generate a SQL query to answer it.
-Return ONLY this JSON (nothing before or after):
-{
-  "sql": "SELECT ...",
-  "explanation": "brief note"
-}
-If the question is not about financial data or invoices, return:
-{
-  "sql": null,
-  "explanation": null,
-  "direct_answer": "Lo siento, solo puedo responder preguntas sobre tus facturas y datos financieros del sistema."
-}`,
-    });
 
     const sqlResponse = await openai.chat.completions.create({
       model: aiModel,
-      messages: intentMessages,
+      messages: sqlMessages,
       temperature: 0.05,
-      max_tokens: 600,
+      max_tokens: 500,
     });
 
-    const rawOutput = sqlResponse.choices[0]?.message?.content?.trim() || '';
+    const rawSqlOutput = sqlResponse.choices[0]?.message?.content?.trim() || '';
 
-    let sqlPlan: {
-      sql: string | null;
-      explanation: string | null;
-      direct_answer?: string;
-    };
+    // Extract the first SELECT statement found anywhere in the output
+    // This handles cases where the model wraps SQL in markdown or adds text
+    const selectMatch = rawSqlOutput.match(/SELECT[\s\S]+?(?=;|$)/i);
+    const extractedSql = selectMatch ? selectMatch[0].replace(/```/g, '').trim() : null;
 
-    try {
-      const jsonMatch = rawOutput.match(/\{[\s\S]*\}/);
-      sqlPlan = JSON.parse(jsonMatch ? jsonMatch[0] : rawOutput);
-    } catch {
-      sqlPlan = { sql: null, explanation: null, direct_answer: rawOutput };
-    }
+    // ── Step 2: Handle non-SQL responses ────────────────────────────────────
+    if (!extractedSql || rawSqlOutput.trim().toUpperCase().startsWith('NO_SQL')) {
+      let answer = 'Lo siento, solo puedo responder preguntas sobre tus facturas y datos financieros del sistema. ¿En qué te puedo ayudar con tus gastos?';
 
-    // ── Step 2: Handle direct answers ────────────────────────────────────────
-    if (!sqlPlan.sql) {
-      const answer =
-        sqlPlan.direct_answer ||
-        'Lo siento, solo puedo responder preguntas sobre tus facturas y datos financieros del sistema.';
+      // If we have attached invoice context, answer directly from it (no SQL needed)
+      if (attachedContext) {
+        const invLinkGuide = validAttachedIds.length > 0
+          ? `\nWhen mentioning any invoice, use these markdown links: ${validAttachedIds.map(inv => {
+              const d = inv.invoice_date ? new Date(inv.invoice_date).toLocaleDateString('es-ES') : '';
+              return `[${inv.supplier}${d ? ' - ' + d : ''}](/invoices/${inv.id})`;
+            }).join(', ')}.`
+          : '';
+        const contextResponse = await openai.chat.completions.create({
+          model: aiModel,
+          messages: [
+            { role: 'system', content: `Eres un asistente financiero. Responde SIEMPRE en español. Sé conciso, claro y amigable. Nunca menciones SQL ni detalles técnicos.${invLinkGuide}` },
+            { role: 'user', content: `${attachedContext}\n\nPregunta del usuario: ${message}` },
+          ],
+          temperature: 0.4,
+          max_tokens: 600,
+        });
+        answer = contextResponse.choices[0]?.message?.content?.trim() || answer;
+      }
 
       await query(
         'INSERT INTO chat_history (user_id, session_id, role, content) VALUES ($1, $2, $3, $4)',
@@ -219,28 +254,26 @@ If the question is not about financial data or invoices, return:
         [user.id, currentSessionId, 'assistant', answer]
       );
 
-      return NextResponse.json({ answer, sql: null, sessionId: currentSessionId });
+      return NextResponse.json({ answer, sessionId: currentSessionId });
     }
 
-    // ── Step 3: Validate SQL (hardened) ──────────────────────────────────────
-    const sqlValidation = validateSql(sqlPlan.sql, user.id);
+    // ── Step 3: Validate SQL (security) ──────────────────────────────────────
+    const sqlValidation = validateSql(extractedSql, user.id);
     if (!sqlValidation.isValid) {
-      console.warn(`[SECURITY] Invalid SQL generated for user ${user.id}: ${sqlValidation.error}\nSQL: ${sqlPlan.sql}`);
+      console.warn(`[SECURITY] Invalid SQL for user ${user.id}: ${sqlValidation.error}\nSQL: ${extractedSql}`);
       return NextResponse.json({
         answer: 'No pude generar una consulta segura para esa pregunta. ¿Podrías reformularla?',
-        sql: null,
       });
     }
 
-    // ── Step 4: Execute SQL in READ-ONLY transaction ──────────────────────────
+    // ── Step 4: Execute SQL (read-only) ───────────────────────────────────────
     let queryResult: any[] = [];
     let sqlError: string | null = null;
 
     try {
-      // Use a read-only transaction for extra safety
       await query('BEGIN READ ONLY');
       try {
-        const result = await query(sqlPlan.sql);
+        const result = await query(extractedSql);
         queryResult = result.rows;
         await query('COMMIT');
       } catch (e) {
@@ -249,29 +282,57 @@ If the question is not about financial data or invoices, return:
       }
     } catch (e: any) {
       sqlError = e.message;
+      console.error('[SQL ERROR]', e.message, '\nSQL:', extractedSql);
     }
 
-    // ── Step 5: Format answer ─────────────────────────────────────────────────
-    const answerContent = sqlError
-      ? `The user asked: "${message}"\nThe query failed: ${sqlError}\nExplain in Spanish that there was a data retrieval error and suggest rephrasing.`
-      : ANSWER_PROMPT(message, queryResult, sqlPlan.sql);
+    // ── Step 5: Generate natural language answer ──────────────────────────────
+    // Build a lookup of all invoice IDs known from query results + attached invoices
+    const knownInvoiceIds: Record<number, { supplier: string; date: string }> = {};
+    for (const inv of validAttachedIds) {
+      const dateStr = inv.invoice_date ? new Date(inv.invoice_date).toLocaleDateString('es-ES') : '';
+      knownInvoiceIds[inv.id] = { supplier: inv.supplier || 'Factura', date: dateStr };
+    }
+    // Also pick up IDs from SQL results
+    for (const row of queryResult) {
+      if (row.id && row.supplier) {
+        const dateStr = row.invoice_date ? new Date(row.invoice_date).toLocaleDateString('es-ES') : '';
+        knownInvoiceIds[Number(row.id)] = { supplier: row.supplier, date: dateStr };
+      }
+    }
+
+    const invoiceLinkGuide = Object.keys(knownInvoiceIds).length > 0
+      ? `\nWhen mentioning any of these invoices by name or date, format them as markdown links exactly like this: [Supplier - Date](/invoices/ID). Known invoices: ${Object.entries(knownInvoiceIds).map(([id, v]) => `ID=${id}: "${v.supplier}" (${v.date}) → [${v.supplier}${v.date ? ' - ' + v.date : ''}](/invoices/${id})`).join(', ')}.`
+      : '';
+
+    const resultSummary = sqlError
+      ? `The query failed with error: ${sqlError}. Tell the user in Spanish there was an error retrieving data and suggest rephrasing.`
+      : `${attachedContext ? 'CONTEXT (attached invoices): use this to answer if relevant.\n' + attachedContext + '\n\n' : ''}The user asked: "${message}"
+Query results (${queryResult.length} rows): ${JSON.stringify(queryResult, null, 2)}
+
+Write a clear, natural answer in Spanish.
+- Be concise but informative.
+- Format monetary values nicely (e.g. $1.234,56).
+- If results are empty, say no data was found for the period.
+- Do NOT mention SQL, databases, queries, or any technical details.
+- Do NOT use markdown headers or code blocks.
+- Write as if you are a helpful financial assistant explaining the data.${invoiceLinkGuide}`;
 
     const answerResponse = await openai.chat.completions.create({
       model: aiModel,
       messages: [
         {
           role: 'system',
-          content: 'You are a financial data assistant. Answer ONLY in Spanish. Be concise and factual. Never invent data.',
+          content: 'Eres un asistente financiero. Responde SIEMPRE en español. Sé conciso, claro y amigable. Nunca menciones SQL ni detalles técnicos. Nunca inventes datos.',
         },
-        { role: 'user', content: answerContent },
+        { role: 'user', content: resultSummary },
       ],
-      temperature: 0.3,
-      max_tokens: 800,
+      temperature: 0.4,
+      max_tokens: 600,
     });
 
     const answer =
       answerResponse.choices[0]?.message?.content?.trim() ||
-      'No pude generar una respuesta.';
+      'No pude generar una respuesta en este momento.';
 
     // ── Step 6: Save to history ───────────────────────────────────────────────
     await query(
@@ -280,14 +341,11 @@ If the question is not about financial data or invoices, return:
     );
     await query(
       'INSERT INTO chat_history (user_id, session_id, role, content, sql_query) VALUES ($1, $2, $3, $4, $5)',
-      [user.id, currentSessionId, 'assistant', answer, sqlPlan.sql]
+      [user.id, currentSessionId, 'assistant', answer, extractedSql]
     );
 
     return NextResponse.json({
       answer,
-      sql: sqlPlan.sql,
-      rowCount: queryResult.length,
-      rawData: queryResult.slice(0, 10),
       sessionId: currentSessionId,
     });
   } catch (error: any) {

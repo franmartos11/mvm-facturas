@@ -2,8 +2,9 @@ import { getInvoiceById } from '@/app/actions';
 import InvoiceDetailView from '@/components/InvoiceDetailView';
 import { notFound } from 'next/navigation';
 
-export default async function InvoicePage({ params }: { params: { id: string } }) {
-  const invoiceId = parseInt(params.id, 10);
+export default async function InvoicePage({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
+  const invoiceId = parseInt(id, 10);
   if (isNaN(invoiceId)) {
     notFound();
   }

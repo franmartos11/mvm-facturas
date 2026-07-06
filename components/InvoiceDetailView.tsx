@@ -34,6 +34,11 @@ export default function InvoiceDetailView({ invoice, items: initialItems }: Invo
         quantity: editForm.quantity,
         unit_price: editForm.unit_price,
         total_price: editForm.total_price,
+        discount: editForm.discount,
+        tax_rate: editForm.tax_rate,
+        tax_amount: editForm.tax_amount,
+        item_code: editForm.item_code,
+        unit_of_measure: editForm.unit_of_measure,
       });
       setItems(items.map(i => (i.id === editingItem ? editForm : i)));
       setEditingItem(null);
@@ -101,16 +106,32 @@ export default function InvoiceDetailView({ invoice, items: initialItems }: Invo
             {/* Meta Info Card */}
             <div className="bg-card border border-border rounded-xl p-6 shadow-sm">
               <h2 className="text-sm font-medium text-muted-foreground uppercase tracking-wider mb-4">Datos Principales</h2>
-              <div className="grid grid-cols-2 gap-6">
+              <div className="grid grid-cols-2 lg:grid-cols-4 gap-6">
                 <div>
                   <p className="text-sm text-muted-foreground mb-1">Proveedor</p>
                   <p className="font-semibold text-foreground text-lg">{invoice.supplier || 'Desconocido'}</p>
                 </div>
                 <div>
-                  <p className="text-sm text-muted-foreground mb-1">Fecha de Factura</p>
+                  <p className="text-sm text-muted-foreground mb-1">CUIT Proveedor</p>
+                  <p className="font-semibold text-foreground text-lg">{invoice.supplier_cuit || '-'}</p>
+                </div>
+                <div>
+                  <p className="text-sm text-muted-foreground mb-1">Nº Factura</p>
+                  <p className="font-semibold text-foreground text-lg">{invoice.invoice_number || '-'}</p>
+                </div>
+                <div>
+                  <p className="text-sm text-muted-foreground mb-1">Fecha</p>
                   <p className="font-semibold text-foreground text-lg">
                     {invoice.invoice_date ? new Date(invoice.invoice_date).toLocaleDateString('es-ES') : 'No detectada'}
                   </p>
+                </div>
+                <div>
+                  <p className="text-sm text-muted-foreground mb-1">Cliente</p>
+                  <p className="font-semibold text-foreground text-lg">{invoice.customer_name || '-'}</p>
+                </div>
+                <div>
+                  <p className="text-sm text-muted-foreground mb-1">CUIT Cliente</p>
+                  <p className="font-semibold text-foreground text-lg">{invoice.customer_cuit || '-'}</p>
                 </div>
                 <div>
                   <p className="text-sm text-muted-foreground mb-1">Categoría General</p>
@@ -151,9 +172,14 @@ export default function InvoiceDetailView({ invoice, items: initialItems }: Invo
                 <table className="w-full text-sm text-left">
                   <thead className="bg-muted/50 text-muted-foreground uppercase text-xs">
                     <tr>
+                      <th className="px-4 py-3 font-medium">Cód.</th>
                       <th className="px-4 py-3 font-medium">Descripción</th>
                       <th className="px-4 py-3 font-medium text-center">Cant.</th>
+                      <th className="px-4 py-3 font-medium text-center">U.M.</th>
                       <th className="px-4 py-3 font-medium text-right">P. Unit</th>
+                      <th className="px-4 py-3 font-medium text-right">Desc.</th>
+                      <th className="px-4 py-3 font-medium text-right">IVA %</th>
+                      <th className="px-4 py-3 font-medium text-right">IVA $</th>
                       <th className="px-4 py-3 font-medium text-right">Total</th>
                       <th className="px-4 py-3 font-medium text-right">Acción</th>
                     </tr>
@@ -165,7 +191,15 @@ export default function InvoiceDetailView({ invoice, items: initialItems }: Invo
                           <>
                             <td className="px-4 py-2">
                               <input 
-                                className="w-full bg-background border border-input rounded px-2 py-1 text-sm focus:ring-1 focus:ring-primary outline-none"
+                                className="w-16 bg-background border border-input rounded px-2 py-1 text-sm focus:ring-1 focus:ring-primary outline-none"
+                                value={editForm.item_code || ''}
+                                onChange={e => setEditForm({...editForm, item_code: e.target.value})}
+                                placeholder="SKU"
+                              />
+                            </td>
+                            <td className="px-4 py-2">
+                              <input 
+                                className="w-full min-w-[120px] bg-background border border-input rounded px-2 py-1 text-sm focus:ring-1 focus:ring-primary outline-none"
                                 value={editForm.description}
                                 onChange={e => setEditForm({...editForm, description: e.target.value})}
                               />
@@ -178,6 +212,14 @@ export default function InvoiceDetailView({ invoice, items: initialItems }: Invo
                                 onChange={e => setEditForm({...editForm, quantity: Number(e.target.value)})}
                               />
                             </td>
+                            <td className="px-4 py-2 text-center">
+                              <input 
+                                className="w-12 bg-background border border-input rounded px-2 py-1 text-sm focus:ring-1 focus:ring-primary outline-none text-center"
+                                value={editForm.unit_of_measure || ''}
+                                onChange={e => setEditForm({...editForm, unit_of_measure: e.target.value})}
+                                placeholder="un"
+                              />
+                            </td>
                             <td className="px-4 py-2 text-right">
                               <input 
                                 type="number"
@@ -185,6 +227,33 @@ export default function InvoiceDetailView({ invoice, items: initialItems }: Invo
                                 className="w-20 bg-background border border-input rounded px-2 py-1 text-sm focus:ring-1 focus:ring-primary outline-none text-right"
                                 value={editForm.unit_price}
                                 onChange={e => setEditForm({...editForm, unit_price: Number(e.target.value)})}
+                              />
+                            </td>
+                            <td className="px-4 py-2 text-right">
+                              <input 
+                                type="number"
+                                step="0.01"
+                                className="w-16 bg-background border border-input rounded px-2 py-1 text-sm focus:ring-1 focus:ring-primary outline-none text-right"
+                                value={editForm.discount || 0}
+                                onChange={e => setEditForm({...editForm, discount: Number(e.target.value)})}
+                              />
+                            </td>
+                            <td className="px-4 py-2 text-right">
+                              <input 
+                                type="number"
+                                step="0.1"
+                                className="w-16 bg-background border border-input rounded px-2 py-1 text-sm focus:ring-1 focus:ring-primary outline-none text-right"
+                                value={editForm.tax_rate || 0}
+                                onChange={e => setEditForm({...editForm, tax_rate: Number(e.target.value)})}
+                              />
+                            </td>
+                            <td className="px-4 py-2 text-right">
+                              <input 
+                                type="number"
+                                step="0.01"
+                                className="w-16 bg-background border border-input rounded px-2 py-1 text-sm focus:ring-1 focus:ring-primary outline-none text-right"
+                                value={editForm.tax_amount || 0}
+                                onChange={e => setEditForm({...editForm, tax_amount: Number(e.target.value)})}
                               />
                             </td>
                             <td className="px-4 py-2 text-right">
@@ -213,9 +282,14 @@ export default function InvoiceDetailView({ invoice, items: initialItems }: Invo
                           </>
                         ) : (
                           <>
+                            <td className="px-4 py-3 text-muted-foreground">{item.item_code || '-'}</td>
                             <td className="px-4 py-3 text-foreground">{item.description}</td>
                             <td className="px-4 py-3 text-center text-muted-foreground">{item.quantity}</td>
+                            <td className="px-4 py-3 text-center text-muted-foreground">{item.unit_of_measure || '-'}</td>
                             <td className="px-4 py-3 text-right text-muted-foreground">${Number(item.unit_price).toLocaleString('es-ES', { minimumFractionDigits: 2 })}</td>
+                            <td className="px-4 py-3 text-right text-muted-foreground text-red-500/80">{Number(item.discount || 0) > 0 ? `-$${Number(item.discount).toLocaleString('es-ES', { minimumFractionDigits: 2 })}` : '-'}</td>
+                            <td className="px-4 py-3 text-right text-muted-foreground">{Number(item.tax_rate || 0) > 0 ? `${item.tax_rate}%` : '-'}</td>
+                            <td className="px-4 py-3 text-right text-muted-foreground">{Number(item.tax_amount || 0) > 0 ? `$${Number(item.tax_amount).toLocaleString('es-ES', { minimumFractionDigits: 2 })}` : '-'}</td>
                             <td className="px-4 py-3 text-right font-medium text-foreground">${Number(item.total_price).toLocaleString('es-ES', { minimumFractionDigits: 2 })}</td>
                             <td className="px-4 py-3 text-right">
                               <button onClick={() => startEdit(item)} className="p-1.5 text-muted-foreground hover:text-primary transition-colors">
@@ -230,7 +304,7 @@ export default function InvoiceDetailView({ invoice, items: initialItems }: Invo
                     ))}
                     {items.length === 0 && (
                       <tr>
-                        <td colSpan={5} className="px-4 py-8 text-center text-muted-foreground">
+                        <td colSpan={10} className="px-4 py-8 text-center text-muted-foreground">
                           No se extrajeron ítems para esta factura.
                         </td>
                       </tr>

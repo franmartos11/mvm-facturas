@@ -1,26 +1,28 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
-import { exportToCsv } from '@/utils/exportCsv';
-import {
-  BarChart, Bar, XAxis, YAxis, Tooltip as RechartsTooltip, ResponsiveContainer,
-  PieChart, Pie, Cell, Legend
-} from 'recharts';
+import ReactMarkdown from 'react-markdown';
+import Link from 'next/link';
 
 interface Message {
   id: string;
   role: 'user' | 'assistant';
   content: string;
-  sql?: string | null;
-  rowCount?: number;
-  rawData?: any[];
   isLoading?: boolean;
+  attachedInvoices?: AttachedInvoice[];
 }
 
 interface ChatSession {
   id: number;
   title: string;
   updated_at: string;
+}
+
+interface AttachedInvoice {
+  id: number;
+  supplier: string;
+  invoice_date: string | null;
+  filename: string;
 }
 
 const SUGGESTED_QUESTIONS = [
@@ -35,22 +37,28 @@ const SUGGESTED_QUESTIONS = [
 export default function ChatInterface() {
   const [sessions, setSessions] = useState<ChatSession[]>([]);
   const [currentSessionId, setCurrentSessionId] = useState<number | null>(null);
-  
+
   const [messages, setMessages] = useState<Message[]>([
     {
       id: 'welcome',
       role: 'assistant',
-      content: '¡Hola! Soy tu asistente financiero. Puedo analizar tus facturas y responder cualquier pregunta sobre tus gastos. ¿En qué puedo ayudarte hoy?',
+      content: '¡Hola! Soy tu asistente financiero. Puedo analizar tus facturas y responder cualquier pregunta sobre tus gastos. También podés adjuntar facturas específicas con el botón 📎 para preguntarme sobre ellas en detalle.',
     }
   ]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
-  const [showSql, setShowSql] = useState<string | null>(null);
-  const [chartViews, setChartViews] = useState<Record<string, 'table' | 'bar' | 'pie'>>({});
-  
+
+  // Invoice attachment state
+  const [attachedInvoices, setAttachedInvoices] = useState<AttachedInvoice[]>([]);
+  const [showInvoicePicker, setShowInvoicePicker] = useState(false);
+  const [availableInvoices, setAvailableInvoices] = useState<AttachedInvoice[]>([]);
+  const [invoiceSearch, setInvoiceSearch] = useState('');
+  const [loadingInvoices, setLoadingInvoices] = useState(false);
+
   const bottomRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
+  const pickerRef = useRef<HTMLDivElement>(null);
 
   // Load sessions on mount
   useEffect(() => {
@@ -65,7 +73,7 @@ export default function ChatInterface() {
       setMessages([{
         id: 'welcome',
         role: 'assistant',
-        content: '¡Hola! Soy tu asistente financiero. Puedo analizar tus facturas y responder cualquier pregunta sobre tus gastos. ¿En qué puedo ayudarte hoy?',
+        content: '¡Hola! Soy tu asistente financiero. Puedo analizar tus facturas y responder cualquier pregunta sobre tus gastos. También podés adjuntar facturas específicas con el botón 📎 para preguntarme sobre ellas en detalle.',
       }]);
     }
   }, [currentSessionId]);
@@ -74,13 +82,22 @@ export default function ChatInterface() {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
+  // Close picker on outside click
+  useEffect(() => {
+    const handleClick = (e: MouseEvent) => {
+      if (pickerRef.current && !pickerRef.current.contains(e.target as Node)) {
+        setShowInvoicePicker(false);
+      }
+    };
+    if (showInvoicePicker) document.addEventListener('mousedown', handleClick);
+    return () => document.removeEventListener('mousedown', handleClick);
+  }, [showInvoicePicker]);
+
   const fetchSessions = async () => {
     try {
       const res = await fetch('/api/chat/sessions');
       const data = await res.json();
-      if (res.ok) {
-        setSessions(data.sessions);
-      }
+      if (res.ok) setSessions(data.sessions);
     } catch (error) {
       console.error('Error fetching sessions', error);
     }
@@ -95,7 +112,6 @@ export default function ChatInterface() {
           id: `msg-${i}`,
           role: m.role,
           content: m.content,
-          sql: m.sql_query,
         }));
         setMessages(loadedMessages);
       }
@@ -104,8 +120,45 @@ export default function ChatInterface() {
     }
   };
 
+  const fetchAvailableInvoices = async () => {
+    setLoadingInvoices(true);
+    try {
+      const res = await fetch('/api/invoices/list');
+      if (res.ok) {
+        const data = await res.json();
+        setAvailableInvoices(data.invoices || []);
+      }
+    } catch (e) {
+      console.error('Error fetching invoices list', e);
+    } finally {
+      setLoadingInvoices(false);
+    }
+  };
+
   const handleNewChat = () => {
     setCurrentSessionId(null);
+    setAttachedInvoices([]);
+  };
+
+  const toggleInvoicePicker = () => {
+    if (!showInvoicePicker && availableInvoices.length === 0) {
+      fetchAvailableInvoices();
+    }
+    setShowInvoicePicker(v => !v);
+    setInvoiceSearch('');
+  };
+
+  const toggleAttachInvoice = (inv: AttachedInvoice) => {
+    setAttachedInvoices(prev => {
+      const exists = prev.some(a => a.id === inv.id);
+      if (exists) return prev.filter(a => a.id !== inv.id);
+      if (prev.length >= 3) return prev; // Max 3
+      return [...prev, inv];
+    });
+  };
+
+  const removeAttached = (id: number) => {
+    setAttachedInvoices(prev => prev.filter(a => a.id !== id));
   };
 
   const handleSubmit = async (question?: string) => {
@@ -116,6 +169,7 @@ export default function ChatInterface() {
       id: crypto.randomUUID(),
       role: 'user',
       content: text,
+      attachedInvoices: attachedInvoices.length > 0 ? [...attachedInvoices] : undefined,
     };
 
     const loadingMsg: Message = {
@@ -127,6 +181,8 @@ export default function ChatInterface() {
 
     setMessages(prev => [...prev, userMsg, loadingMsg]);
     setInput('');
+    const sentAttached = [...attachedInvoices];
+    setAttachedInvoices([]);
     setIsLoading(true);
 
     try {
@@ -137,29 +193,29 @@ export default function ChatInterface() {
       const res = await fetch('/api/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ message: text, history, sessionId: currentSessionId }),
+        body: JSON.stringify({
+          message: text,
+          history,
+          sessionId: currentSessionId,
+          attachedInvoiceIds: sentAttached.map(a => a.id),
+        }),
       });
 
       const data = await res.json();
 
-      if (!res.ok) {
-        throw new Error(data.error || 'Error desconocido');
-      }
+      if (!res.ok) throw new Error(data.error || 'Error desconocido');
 
       const assistantMsg: Message = {
         id: crypto.randomUUID(),
         role: 'assistant',
         content: data.answer,
-        sql: data.sql,
-        rowCount: data.rowCount,
-        rawData: data.rawData,
       };
 
       setMessages(prev => prev.filter(m => m.id !== 'loading').concat(assistantMsg));
-      
+
       if (!currentSessionId && data.sessionId) {
         setCurrentSessionId(data.sessionId);
-        fetchSessions(); // Refresh sidebar to show the new chat
+        fetchSessions();
       }
     } catch (error: any) {
       const errMsg: Message = {
@@ -184,12 +240,9 @@ export default function ChatInterface() {
   const deleteSession = async (id: number, e: React.MouseEvent) => {
     e.stopPropagation();
     if (!confirm('¿Borrar este chat?')) return;
-    
     await fetch(`/api/chat/sessions?id=${id}`, { method: 'DELETE' });
     setSessions(prev => prev.filter(s => s.id !== id));
-    if (currentSessionId === id) {
-      setCurrentSessionId(null);
-    }
+    if (currentSessionId === id) setCurrentSessionId(null);
   };
 
   const clearAllHistory = async () => {
@@ -198,6 +251,11 @@ export default function ChatInterface() {
     setSessions([]);
     setCurrentSessionId(null);
   };
+
+  const filteredInvoices = availableInvoices.filter(inv =>
+    inv.supplier?.toLowerCase().includes(invoiceSearch.toLowerCase()) ||
+    inv.filename?.toLowerCase().includes(invoiceSearch.toLowerCase())
+  );
 
   return (
     <div className="h-full flex overflow-hidden bg-background relative selection:bg-violet-500/30">
@@ -210,7 +268,7 @@ export default function ChatInterface() {
         shrink-0 border-r border-border bg-muted/30 backdrop-blur-xl flex flex-col transition-all duration-300 overflow-hidden z-20
       `}>
         <div className="p-4 border-b border-border">
-          <button 
+          <button
             onClick={handleNewChat}
             className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-background hover:bg-muted text-foreground rounded-xl font-medium transition-all duration-300 border border-border shadow-sm hover:shadow-md group"
           >
@@ -220,19 +278,19 @@ export default function ChatInterface() {
             Nuevo Chat
           </button>
         </div>
-        
+
         <div className="flex-1 overflow-y-auto p-2 space-y-1">
           {sessions.length === 0 ? (
             <p className="text-xs text-muted-foreground text-center p-4">No hay chats recientes</p>
           ) : (
             sessions.map(session => (
-              <div 
+              <div
                 key={session.id}
                 onClick={() => setCurrentSessionId(session.id)}
                 className={`
                   group flex items-center justify-between p-3 rounded-xl cursor-pointer transition-all duration-300 relative overflow-hidden
-                  ${currentSessionId === session.id 
-                    ? 'bg-violet-500/10 text-violet-600 border border-violet-500/20 shadow-[inset_0_0_20px_rgba(139,92,246,0.05)]' 
+                  ${currentSessionId === session.id
+                    ? 'bg-violet-500/10 text-violet-600 border border-violet-500/20 shadow-[inset_0_0_20px_rgba(139,92,246,0.05)]'
                     : 'hover:bg-background text-muted-foreground hover:text-foreground border border-transparent'}
                 `}
               >
@@ -242,7 +300,7 @@ export default function ChatInterface() {
                   </svg>
                   <span className="text-sm truncate">{session.title}</span>
                 </div>
-                <button 
+                <button
                   onClick={(e) => deleteSession(session.id, e)}
                   className="opacity-0 group-hover:opacity-100 p-1 hover:text-red-500 transition-all"
                   title="Borrar chat"
@@ -262,7 +320,7 @@ export default function ChatInterface() {
         {/* Header */}
         <div className="shrink-0 py-6 flex items-center justify-between border-b border-border pl-4 z-10 relative bg-background/50 backdrop-blur-sm">
           <div className="flex items-center gap-5">
-            <button 
+            <button
               onClick={() => setIsSidebarOpen(!isSidebarOpen)}
               className="p-3 text-muted-foreground hover:text-foreground hover:bg-muted rounded-2xl transition-all duration-300"
               title="Alternar panel lateral"
@@ -281,14 +339,13 @@ export default function ChatInterface() {
                 Asistente Financiero
               </h1>
               <p className="text-[14px] text-foreground/50 mt-1.5 ml-[54px]">
-                {currentSessionId 
-                  ? sessions.find(s => s.id === currentSessionId)?.title 
-                  : 'Haceme cualquier pregunta sobre tus facturas y gastos'
-                }
+                {currentSessionId
+                  ? sessions.find(s => s.id === currentSessionId)?.title
+                  : 'Haceme cualquier pregunta sobre tus facturas y gastos'}
               </p>
             </div>
           </div>
-          
+
           <button onClick={clearAllHistory} className="p-2 text-foreground/40 hover:text-red-400 hover:bg-red-500/10 rounded-xl transition-all duration-300" title="Borrar TODOS los chats">
             <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
@@ -311,6 +368,24 @@ export default function ChatInterface() {
 
               {/* Bubble */}
               <div className={`max-w-[85%] ${msg.role === 'user' ? 'items-end' : 'items-start'} flex flex-col gap-3`}>
+                {/* Attached invoice chips on user messages */}
+                {msg.attachedInvoices && msg.attachedInvoices.length > 0 && (
+                  <div className="flex flex-wrap gap-1.5 justify-end">
+                    {msg.attachedInvoices.map(inv => (
+                      <Link
+                        key={inv.id}
+                        href={`/invoices/${inv.id}`}
+                        className="flex items-center gap-1.5 px-2.5 py-1 bg-white/10 border border-white/20 rounded-full text-[11px] text-white/80 hover:bg-white/20 transition-colors"
+                      >
+                        <svg xmlns="http://www.w3.org/2000/svg" className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13" />
+                        </svg>
+                        {inv.supplier || inv.filename}
+                      </Link>
+                    ))}
+                  </div>
+                )}
+
                 <div className={`w-fit px-7 py-5 leading-relaxed text-[15px] shadow-sm ${
                   msg.role === 'user'
                     ? 'bg-gradient-to-r from-indigo-500 to-purple-600 text-white rounded-[24px] rounded-tr-[4px]'
@@ -322,155 +397,162 @@ export default function ChatInterface() {
                       <div className="w-1.5 h-1.5 bg-violet-400/60 rounded-full animate-bounce" style={{ animationDelay: '150ms' }}></div>
                       <div className="w-1.5 h-1.5 bg-violet-400/60 rounded-full animate-bounce" style={{ animationDelay: '300ms' }}></div>
                     </div>
+                  ) : msg.role === 'assistant' ? (
+                    <ReactMarkdown
+                      components={{
+                        a: ({ href, children }) => {
+                          const isInternal = href?.startsWith('/');
+                          if (isInternal) {
+                            return (
+                              <Link
+                                href={href!}
+                                className="inline-flex items-center gap-1 px-2 py-0.5 bg-violet-500/10 border border-violet-500/30 text-violet-600 dark:text-violet-400 rounded-lg text-sm font-medium hover:bg-violet-500/20 transition-colors no-underline"
+                              >
+                                <svg xmlns="http://www.w3.org/2000/svg" className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                                </svg>
+                                {children}
+                              </Link>
+                            );
+                          }
+                          return <a href={href} target="_blank" rel="noopener noreferrer" className="underline text-violet-500">{children}</a>;
+                        },
+                        p: ({ children }) => <p className="mb-2 last:mb-0 whitespace-pre-wrap">{children}</p>,
+                        ul: ({ children }) => <ul className="list-disc list-inside space-y-1 my-2">{children}</ul>,
+                        ol: ({ children }) => <ol className="list-decimal list-inside space-y-1 my-2">{children}</ol>,
+                        strong: ({ children }) => <strong className="font-semibold">{children}</strong>,
+                      }}
+                    >
+                      {msg.content}
+                    </ReactMarkdown>
                   ) : (
                     <p className="whitespace-pre-wrap">{msg.content}</p>
                   )}
                 </div>
-
-                {/* SQL Details Toggle */}
-                {msg.sql && (
-                  <div className="w-full mt-1">
-                    <button
-                      onClick={() => setShowSql(showSql === msg.id ? null : msg.id)}
-                      className="text-xs text-foreground/40 hover:text-violet-400 flex items-center gap-1.5 transition-colors font-medium px-1"
-                    >
-                      <svg xmlns="http://www.w3.org/2000/svg" className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4" />
-                      </svg>
-                      {showSql === msg.id ? 'Ocultar query SQL' : `Ver query SQL`}
-                    </button>
-                    {showSql === msg.id && (
-                      <div className="mt-2 rounded-xl bg-muted/50 border border-border p-4 font-mono text-[11px] text-muted-foreground overflow-x-auto animate-in fade-in slide-in-from-top-1">
-                        {msg.sql}
-                      </div>
-                    )}
-                    {showSql === msg.id && msg.rawData && msg.rawData.length > 0 && (
-                      <div className="mt-2 rounded-xl border border-border overflow-hidden animate-in fade-in slide-in-from-top-1 bg-card backdrop-blur-md shadow-sm">
-                        <div className="flex items-center justify-between px-4 py-2 border-b border-border bg-muted/30">
-                          <div className="flex items-center gap-2">
-                            <button
-                              onClick={() => setChartViews(prev => ({ ...prev, [msg.id]: 'table' }))}
-                              className={`text-[11px] px-2 py-1 rounded-md transition-colors ${!chartViews[msg.id] || chartViews[msg.id] === 'table' ? 'bg-violet-500/20 text-violet-300' : 'text-foreground/50 hover:bg-white/5'}`}
-                            >
-                              Tabla
-                            </button>
-                            <button
-                              onClick={() => setChartViews(prev => ({ ...prev, [msg.id]: 'bar' }))}
-                              className={`text-[11px] px-2 py-1 rounded-md transition-colors ${chartViews[msg.id] === 'bar' ? 'bg-violet-500/20 text-violet-300' : 'text-foreground/50 hover:bg-white/5'}`}
-                            >
-                              Gráfico Barras
-                            </button>
-                            <button
-                              onClick={() => setChartViews(prev => ({ ...prev, [msg.id]: 'pie' }))}
-                              className={`text-[11px] px-2 py-1 rounded-md transition-colors ${chartViews[msg.id] === 'pie' ? 'bg-violet-500/20 text-violet-600' : 'text-muted-foreground hover:bg-muted'}`}
-                            >
-                              Gráfico Torta
-                            </button>
-                          </div>
-                          <button
-                            onClick={() => exportToCsv(`exportacion_${msg.id}`, msg.rawData!)}
-                            className="text-[11px] flex items-center gap-1.5 text-muted-foreground hover:text-green-600 transition-colors bg-muted/50 hover:bg-green-500/10 px-2 py-1 rounded-md border border-border"
-                          >
-                            <svg xmlns="http://www.w3.org/2000/svg" className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-                            </svg>
-                            Exportar CSV
-                          </button>
-                        </div>
-
-                        {(!chartViews[msg.id] || chartViews[msg.id] === 'table') && (
-                          <div className="overflow-auto max-h-64">
-                            <table className="w-full text-xs text-left">
-                              <thead className="bg-muted/50 backdrop-blur-md sticky top-0">
-                                <tr>
-                                  {Object.keys(msg.rawData[0]).map(col => (
-                                    <th key={col} className="px-4 py-2.5 font-medium text-muted-foreground">{col}</th>
-                                  ))}
-                                </tr>
-                              </thead>
-                              <tbody className="divide-y divide-border">
-                                {msg.rawData.map((row, i) => (
-                                  <tr key={i} className="hover:bg-muted/50 transition-colors">
-                                    {Object.values(row).map((val: any, j) => (
-                                      <td key={j} className="px-4 py-2.5 text-foreground">{val?.toString() ?? 'null'}</td>
-                                    ))}
-                                  </tr>
-                                ))}
-                              </tbody>
-                            </table>
-                          </div>
-                        )}
-
-                        {chartViews[msg.id] === 'bar' && (
-                          <div className="h-64 p-4">
-                            <ResponsiveContainer width="100%" height="100%">
-                              <BarChart data={msg.rawData}>
-                                <XAxis 
-                                  dataKey={Object.keys(msg.rawData[0])[0]} 
-                                  stroke="#888888" 
-                                  fontSize={12} 
-                                  tickLine={false} 
-                                  axisLine={false} 
-                                />
-                                <YAxis 
-                                  stroke="#888888" 
-                                  fontSize={12} 
-                                  tickLine={false} 
-                                  axisLine={false} 
-                                  tickFormatter={(value) => `$${value}`} 
-                                />
-                                <RechartsTooltip 
-                                  contentStyle={{ backgroundColor: '#18181b', border: '1px solid #27272a', borderRadius: '8px' }} 
-                                />
-                                <Bar 
-                                  dataKey={Object.keys(msg.rawData[0])[1]} 
-                                  fill="#8b5cf6" 
-                                  radius={[4, 4, 0, 0]} 
-                                />
-                              </BarChart>
-                            </ResponsiveContainer>
-                          </div>
-                        )}
-
-                        {chartViews[msg.id] === 'pie' && (
-                          <div className="h-64 p-4">
-                            <ResponsiveContainer width="100%" height="100%">
-                              <PieChart>
-                                <Pie
-                                  data={msg.rawData}
-                                  dataKey={Object.keys(msg.rawData[0])[1]}
-                                  nameKey={Object.keys(msg.rawData[0])[0]}
-                                  cx="50%"
-                                  cy="50%"
-                                  outerRadius={80}
-                                  fill="#8b5cf6"
-                                  label={({ name, percent }) => `${name} ${((percent || 0) * 100).toFixed(0)}%`}
-                                >
-                                  {msg.rawData.map((entry, index) => (
-                                    <Cell key={`cell-${index}`} fill={['#8b5cf6', '#ec4899', '#3b82f6', '#10b981', '#f59e0b', '#6366f1'][index % 6]} />
-                                  ))}
-                                </Pie>
-                                <RechartsTooltip 
-                                  contentStyle={{ backgroundColor: '#18181b', border: '1px solid #27272a', borderRadius: '8px' }} 
-                                />
-                              </PieChart>
-                            </ResponsiveContainer>
-                          </div>
-                        )}
-                      </div>
-                    )}
-                  </div>
-                )}
               </div>
             </div>
           ))}
+
+          {/* Suggested questions (shown only on new chats) */}
+          {messages.length <= 1 && (
+            <div className="grid grid-cols-2 gap-3 px-4 mt-4">
+              {SUGGESTED_QUESTIONS.map((q) => (
+                <button
+                  key={q}
+                  onClick={() => handleSubmit(q)}
+                  className="text-left px-4 py-3 text-sm rounded-xl border border-border bg-card hover:bg-muted transition-colors text-muted-foreground hover:text-foreground"
+                >
+                  {q}
+                </button>
+              ))}
+            </div>
+          )}
+
           <div ref={bottomRef} />
         </div>
 
-
-        {/* Input */}
+        {/* Input Area */}
         <div className="shrink-0 pb-10 pt-4 z-10 relative px-4 bg-gradient-to-t from-background via-background to-transparent">
-          <div className="relative flex items-center gap-4 bg-card backdrop-blur-xl border border-border rounded-full p-2 pl-6 focus-within:border-violet-500/50 focus-within:ring-4 focus-within:ring-violet-500/10 transition-all duration-300 shadow-[0_8px_30px_rgba(0,0,0,0.05)]">
+          {/* Attached invoice chips */}
+          {attachedInvoices.length > 0 && (
+            <div className="flex flex-wrap gap-2 mb-3 px-2">
+              {attachedInvoices.map(inv => (
+                <div key={inv.id} className="flex items-center gap-1.5 px-3 py-1.5 bg-violet-500/10 border border-violet-500/30 rounded-full text-xs text-violet-600 dark:text-violet-400 font-medium">
+                  <svg xmlns="http://www.w3.org/2000/svg" className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                  </svg>
+                  <span className="max-w-[160px] truncate">{inv.supplier || inv.filename}</span>
+                  <button
+                    onClick={() => removeAttached(inv.id)}
+                    className="ml-1 hover:text-red-500 transition-colors"
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  </button>
+                </div>
+              ))}
+              <span className="text-xs text-muted-foreground self-center">{3 - attachedInvoices.length} restantes</span>
+            </div>
+          )}
+
+          {/* Invoice Picker Dropdown */}
+          {showInvoicePicker && (
+            <div
+              ref={pickerRef}
+              className="absolute bottom-full mb-3 left-4 right-4 bg-card border border-border rounded-2xl shadow-xl z-50 overflow-hidden"
+            >
+              <div className="p-3 border-b border-border">
+                <div className="flex items-center gap-2 bg-muted rounded-xl px-3 py-2">
+                  <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4 text-muted-foreground shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                  </svg>
+                  <input
+                    autoFocus
+                    type="text"
+                    value={invoiceSearch}
+                    onChange={e => setInvoiceSearch(e.target.value)}
+                    placeholder="Buscar factura por proveedor..."
+                    className="flex-1 bg-transparent outline-none text-sm text-foreground placeholder:text-muted-foreground"
+                  />
+                </div>
+              </div>
+              <div className="max-h-60 overflow-y-auto">
+                {loadingInvoices ? (
+                  <div className="p-4 text-center text-sm text-muted-foreground">Cargando facturas...</div>
+                ) : filteredInvoices.length === 0 ? (
+                  <div className="p-4 text-center text-sm text-muted-foreground">No se encontraron facturas.</div>
+                ) : (
+                  filteredInvoices.map(inv => {
+                    const isSelected = attachedInvoices.some(a => a.id === inv.id);
+                    const isDisabled = !isSelected && attachedInvoices.length >= 3;
+                    return (
+                      <button
+                        key={inv.id}
+                        onClick={() => !isDisabled && toggleAttachInvoice(inv)}
+                        disabled={isDisabled}
+                        className={`w-full flex items-center gap-3 px-4 py-3 text-sm text-left transition-colors border-b border-border/50 last:border-0
+                          ${isSelected ? 'bg-violet-500/10 text-violet-600 dark:text-violet-400' : isDisabled ? 'opacity-40 cursor-not-allowed' : 'hover:bg-muted text-foreground'}`}
+                      >
+                        <div className={`w-4 h-4 rounded flex items-center justify-center border shrink-0 ${isSelected ? 'bg-violet-500 border-violet-500' : 'border-border'}`}>
+                          {isSelected && (
+                            <svg xmlns="http://www.w3.org/2000/svg" className="w-2.5 h-2.5 text-white" viewBox="0 0 20 20" fill="currentColor">
+                              <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                            </svg>
+                          )}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="font-medium truncate">{inv.supplier || 'Desconocido'}</p>
+                          <p className="text-xs text-muted-foreground truncate">{inv.filename} {inv.invoice_date ? `· ${new Date(inv.invoice_date).toLocaleDateString('es-ES')}` : ''}</p>
+                        </div>
+                      </button>
+                    );
+                  })
+                )}
+              </div>
+            </div>
+          )}
+
+          <div className="relative flex items-center gap-4 bg-card backdrop-blur-xl border border-border rounded-full p-2 pl-4 focus-within:border-violet-500/50 focus-within:ring-4 focus-within:ring-violet-500/10 transition-all duration-300 shadow-[0_8px_30px_rgba(0,0,0,0.05)]">
+            {/* Attach button */}
+            <button
+              onClick={toggleInvoicePicker}
+              title="Adjuntar factura"
+              className={`shrink-0 w-9 h-9 flex items-center justify-center rounded-full transition-all duration-200
+                ${showInvoicePicker || attachedInvoices.length > 0
+                  ? 'bg-violet-500/15 text-violet-500 border border-violet-500/30'
+                  : 'text-muted-foreground hover:text-foreground hover:bg-muted'}`}
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13" />
+              </svg>
+              {attachedInvoices.length > 0 && (
+                <span className="absolute -top-1 -right-1 w-4 h-4 bg-violet-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center">
+                  {attachedInvoices.length}
+                </span>
+              )}
+            </button>
+
             <textarea
               ref={inputRef}
               rows={1}
@@ -501,7 +583,7 @@ export default function ChatInterface() {
             </button>
           </div>
           <p className="text-[10px] text-muted-foreground text-center mt-3 uppercase tracking-widest font-bold">
-            Presioná Enter para enviar · Shift+Enter para salto de línea
+            Presioná Enter para enviar · Shift+Enter para salto de línea · 📎 Para adjuntar facturas
           </p>
         </div>
       </div>

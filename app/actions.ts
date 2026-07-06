@@ -17,7 +17,7 @@ import { sanitizeDocumentText, HARDENED_INVOICE_ANALYSIS_PREAMBLE } from '@/lib/
 if (typeof globalThis !== 'undefined' && !(globalThis as any).DOMMatrix) {
   (globalThis as any).DOMMatrix = class DOMMatrix {};
 }
-const pdfParse = require('pdf-parse');
+const pdfParse = require('pdf-parse').PDFParse;
 
 import { writeFile, unlink, readFile, mkdir } from 'fs/promises';
 import path from 'path';
@@ -258,6 +258,11 @@ export async function updateInvoiceItem(
     quantity?: number;
     unit_price?: number;
     total_price?: number;
+    discount?: number;
+    tax_rate?: number;
+    tax_amount?: number;
+    item_code?: string;
+    unit_of_measure?: string;
   }
 ) {
   const user = await getSession();
@@ -277,13 +282,23 @@ export async function updateInvoiceItem(
      SET description = COALESCE($1, description),
          quantity    = COALESCE($2, quantity),
          unit_price  = COALESCE($3, unit_price),
-         total_price = COALESCE($4, total_price)
-     WHERE id = $5`,
+         total_price = COALESCE($4, total_price),
+         discount    = COALESCE($5, discount),
+         tax_rate    = COALESCE($6, tax_rate),
+         tax_amount  = COALESCE($7, tax_amount),
+         item_code   = COALESCE($8, item_code),
+         unit_of_measure = COALESCE($9, unit_of_measure)
+     WHERE id = $10`,
     [
       updates.description ?? null,
       updates.quantity ?? null,
       updates.unit_price ?? null,
       updates.total_price ?? null,
+      updates.discount ?? null,
+      updates.tax_rate ?? null,
+      updates.tax_amount ?? null,
+      updates.item_code ?? null,
+      updates.unit_of_measure ?? null,
       itemId,
     ]
   );
@@ -391,7 +406,8 @@ export async function analyzeInvoice(invoiceId: number, filePath: string) {
     let userMessageContent: any[] = [];
     
     if (ext === '.pdf') {
-      const pdfData = await pdfParse(fileBuffer);
+      const parser = new pdfParse({ data: fileBuffer });
+      const pdfData = await parser.getText();
       // Sanitize text to neutralize prompt injection attempts embedded in the document
       const rawText = pdfData.text;
       const sanitizedText = sanitizeDocumentText(rawText);
@@ -426,13 +442,18 @@ ${HARDENED_INVOICE_ANALYSIS_PREAMBLE}
       5. La forma de pago (payment_method): Efectivo, Tarjeta, Transferencia, Cuenta Corriente, u Otro.
       6. La moneda (currency): ARS, USD, EUR, etc.
       7. La fecha de vencimiento (due_date) en formato YYYY-MM-DD. Si no hay, pon null.
-      8. Una categoría PRINCIPAL para TODA LA FACTURA, seleccionando una de estas: "Alimentación", "Hogar", "Tecnología", "Transporte", "Salud", "Servicios" u "Otros".
-      9. Los ítems comprados, asignando a cada uno una de esas mismas categorías.
+      8. Una categoría PRINCIPAL para TODA LA FACTURA: "Alimentación", "Hogar", "Tecnología", "Transporte", "Salud", "Servicios" u "Otros".
+      9. DATOS EXTRA FACTURA: invoice_number (ej: 0001-00001234), supplier_cuit (CUIT/RUT del proveedor), customer_cuit (CUIT/RUT del cliente), customer_name (Nombre del cliente).
+      10. Los ítems comprados, asignando a cada uno una de esas mismas categorías. Además, para cada ítem intenta extraer: discount (descuento aplicado), tax_rate (porcentaje de impuesto, ej: 21.0), tax_amount (monto del impuesto), item_code (código/SKU), y unit_of_measure (kg, l, un, etc.).
 
       Devuélveme SOLO un JSON válido con esta estructura exacta (nada más, ni markdown, ni texto adicional):
       {
         "is_invoice": true,
+        "invoice_number": "0001-00001234",
         "supplier": "Nombre Proveedor",
+        "supplier_cuit": "30-12345678-9",
+        "customer_cuit": "20-87654321-0",
+        "customer_name": "Nombre Cliente",
         "invoice_date": "2023-12-01",
         "due_date": "2023-12-15",
         "payment_method": "Tarjeta",
@@ -443,10 +464,15 @@ ${HARDENED_INVOICE_ANALYSIS_PREAMBLE}
         "total": 121.00,
         "items": [
           {
+            "item_code": "SKU-123",
             "description": "Nombre del producto",
             "category": "Alimentación",
             "quantity": 1,
+            "unit_of_measure": "un",
             "unit_price": 10.50,
+            "discount": 0.00,
+            "tax_rate": 21.0,
+            "tax_amount": 2.20,
             "total_price": 10.50
           }
         ]
@@ -501,21 +527,34 @@ ${HARDENED_INVOICE_ANALYSIS_PREAMBLE}
     const paymentMethod = parsedData.payment_method || 'Desconocido';
     const currency = parsedData.currency || 'ARS';
     const dueDate = parsedData.due_date || null;
+    const invoiceNumber = parsedData.invoice_number || null;
+    const supplierCuit = parsedData.supplier_cuit || null;
+    const customerCuit = parsedData.customer_cuit || null;
+    const customerName = parsedData.customer_name || null;
 
     await query(
       `UPDATE invoices 
-       SET status = 'analyzed', supplier = $1, invoice_date = $2, subtotal = $3, tax = $4, total = $5, category = $6, payment_method = $7, currency = $8, due_date = $9
-       WHERE id = $10`,
-      [supplier, invoiceDate, subtotal, tax, total, invoiceCategory, paymentMethod, currency, dueDate, invoiceId]
+       SET status = 'analyzed', supplier = $1, invoice_date = $2, subtotal = $3, tax = $4, total = $5, category = $6, payment_method = $7, currency = $8, due_date = $9, invoice_number = $10, supplier_cuit = $11, customer_cuit = $12, customer_name = $13
+       WHERE id = $14`,
+      [supplier, invoiceDate, subtotal, tax, total, invoiceCategory, paymentMethod, currency, dueDate, invoiceNumber, supplierCuit, customerCuit, customerName, invoiceId]
     );
 
     // Insertar ítems
     if (items && Array.isArray(items)) {
       for (const item of items) {
+        const quantity = item.quantity || 1;
+        const totalPrice = item.total_price || 0;
+        const unitPrice = item.unit_price != null ? item.unit_price : (totalPrice / quantity);
+        const discount = Number(item.discount) || 0;
+        const taxRate = Number(item.tax_rate) || 0;
+        const taxAmount = Number(item.tax_amount) || 0;
+        const itemCode = item.item_code || null;
+        const uom = item.unit_of_measure || null;
+
         await query(
-          `INSERT INTO invoice_items (invoice_id, description, quantity, unit_price, total_price, category)
-           VALUES ($1, $2, $3, $4, $5, $6)`,
-          [invoiceId, item.description, item.quantity, item.unit_price, item.total_price, item.category || 'Otros']
+          `INSERT INTO invoice_items (invoice_id, description, quantity, unit_price, total_price, category, discount, tax_rate, tax_amount, item_code, unit_of_measure)
+           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)`,
+          [invoiceId, item.description || 'Sin descripción', quantity, unitPrice, totalPrice, item.category || 'Otros', discount, taxRate, taxAmount, itemCode, uom]
         );
       }
     }

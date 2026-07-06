@@ -1,5 +1,8 @@
 'use client';
 
+import { useEffect, useState } from 'react';
+import { createPortal } from 'react-dom';
+
 interface PdfPreviewModalProps {
   url: string;
   filename: string;
@@ -7,9 +10,21 @@ interface PdfPreviewModalProps {
 }
 
 export default function PdfPreviewModal({ url, filename, onClose }: PdfPreviewModalProps) {
+  const [mounted, setMounted] = useState(false);
   const isImage = url.toLowerCase().match(/\.(jpeg|jpg|png|webp)$/);
 
-  return (
+  useEffect(() => {
+    setMounted(true);
+    // Evitar que el fondo haga scroll mientras el modal está abierto
+    document.body.style.overflow = 'hidden';
+    return () => {
+      document.body.style.overflow = 'unset';
+    };
+  }, []);
+
+  if (!mounted) return null;
+
+  return createPortal(
     <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in">
       <div className="bg-background rounded-2xl shadow-xl w-full max-w-5xl h-[90vh] flex flex-col relative animate-in zoom-in-95 overflow-hidden border border-border">
         
@@ -42,6 +57,7 @@ export default function PdfPreviewModal({ url, filename, onClose }: PdfPreviewMo
           )}
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }

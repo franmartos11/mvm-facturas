@@ -26,6 +26,10 @@ CREATE TABLE IF NOT EXISTS invoices (
   due_date DATE,
   file_hash TEXT,
   tags TEXT[],
+  invoice_number TEXT,
+  supplier_cuit TEXT,
+  customer_cuit TEXT,
+  customer_name TEXT,
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
@@ -45,5 +49,10 @@ CREATE TABLE IF NOT EXISTS invoice_items (
   quantity NUMERIC NOT NULL,
   unit_price NUMERIC NOT NULL,
   total_price NUMERIC NOT NULL,
-  category TEXT
+  category TEXT,
+  discount NUMERIC DEFAULT 0,
+  tax_rate NUMERIC DEFAULT 0,
+  tax_amount NUMERIC DEFAULT 0,
+  item_code TEXT,
+  unit_of_measure TEXT
 );
