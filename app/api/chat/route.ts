@@ -45,6 +45,7 @@ SQL RULES:
 5. Use invoice_date (not created_at) for financial filtering.
 6. Limit to 50 rows maximum.
 7. Do NOT use -- comments or /* */ blocks in SQL.
+8. When asked about specific products, amounts, or items, query invoice_items.description using ILIKE (e.g. ILIKE '%cerdo%').
 `;
 
 const ANSWER_PROMPT = (question: string, sqlResult: any[], sql: string) => `
@@ -158,11 +159,11 @@ export async function POST(req: NextRequest) {
       // Limit to 3 invoices max to avoid context overflow
       const safeIds = attachedInvoiceIds.slice(0, 3).filter(id => Number.isInteger(id) && id > 0);
       if (safeIds.length > 0) {
-        const invRes = await query(
+        const invRes = await query<any>(
           `SELECT id, supplier, invoice_date, invoice_number, total FROM invoices WHERE id = ANY($1::int[]) AND user_id = $2`,
           [safeIds, user.id]
         );
-        const itemsRes = await query(
+        const itemsRes = await query<any>(
           `SELECT invoice_id, description, quantity, unit_price, total_price FROM invoice_items WHERE invoice_id = ANY($1::int[]) ORDER BY invoice_id, id`,
           [safeIds]
         );
@@ -175,7 +176,7 @@ export async function POST(req: NextRequest) {
 
         const contextBlocks = invRes.rows.map(inv => {
           validAttachedIds.push({ id: inv.id, supplier: inv.supplier, invoice_date: inv.invoice_date, invoice_number: inv.invoice_number });
-          const dateStr = inv.invoice_date ? new Date(inv.invoice_date).toLocaleDateString('es-ES') : 'Sin fecha';
+          const dateStr = inv.invoice_date ? new Date(String(inv.invoice_date)).toLocaleDateString('es-ES') : 'Sin fecha';
           const items = (itemsByInvoice[inv.id] || []).map((it: any) =>
             `  - ${it.description} | Cant: ${it.quantity} | P.Unit: $${Number(it.unit_price).toFixed(2)} | Total: $${Number(it.total_price).toFixed(2)}`
           ).join('\n');
@@ -201,7 +202,7 @@ ${contextBlocks.join('\n\n')}`;
 Your task: write a single PostgreSQL SELECT query that answers the user's question.
 Output ONLY the raw SQL query, nothing else. No explanations, no markdown, no JSON.
 If the question can be answered DIRECTLY from the CONTEXT above (attached invoices) without needing a DB query, output exactly the word: NO_SQL
-If the question is NOT about financial data or invoices at all, output exactly the word: NO_SQL`,
+If the question is NOT about financial data, invoices, products bought, or business analytics at all, output exactly the word: NO_SQL`,
       },
       ...history.slice(-6).map(h => ({ role: h.role, content: h.content })),
       { role: 'user', content: message },

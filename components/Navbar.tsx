@@ -20,6 +20,9 @@ export default async function Navbar() {
             <Link href="/analytics" className="text-muted-foreground hover:text-foreground transition-colors font-medium">
               Análisis
             </Link>
+            <Link href="/integrations/tango" className="text-muted-foreground hover:text-foreground transition-colors font-medium">
+              Integraciones
+            </Link>
             <Link href="/chat" className="flex items-center gap-1.5 text-muted-foreground hover:text-foreground transition-colors font-medium">
               <span className="inline-flex w-4 h-4 bg-violet-500/20 text-violet-500 rounded-full items-center justify-center text-[9px]">✦</span>
               Chat IA

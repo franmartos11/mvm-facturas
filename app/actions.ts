@@ -594,3 +594,21 @@ export async function reanalyzeInvoice(invoiceId: number, filePath: string) {
   // Llamar al análisis estándar
   return analyzeInvoice(invoiceId, filePath);
 }
+
+export async function updateTangoToken(prevState: any, formData: FormData) {
+  const token = formData.get('tangoToken') as string;
+  const user = await getSession();
+  
+  if (!user) {
+    return { error: 'No autorizado' };
+  }
+
+  try {
+    await query('UPDATE users SET tango_token = $1 WHERE id = $2', [token || null, user.id]);
+    revalidatePath('/profile');
+    return { success: 'Token de Tango actualizado correctamente' };
+  } catch (error) {
+    console.error('Error updating tango token:', error);
+    return { error: 'Ocurrió un error al guardar el token' };
+  }
+}

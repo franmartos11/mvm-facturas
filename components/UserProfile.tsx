@@ -1,9 +1,9 @@
 "use client";
 
 import { useActionState } from "react";
-import { changePassword } from "@/app/actions";
+import { changePassword, updateTangoToken } from "@/app/actions";
 import { type SessionUser } from '@/lib/auth';
-import { Loader2, ShieldCheck, Lock } from "lucide-react";
+import { Loader2, ShieldCheck, Lock, Link as LinkIcon } from "lucide-react";
 import { motion } from "framer-motion";
 
 const initialState = {
@@ -11,8 +11,9 @@ const initialState = {
   success: null as string | null,
 };
 
-export default function UserProfile({ user }: { user: SessionUser }) {
+export default function UserProfile({ user, initialTangoToken }: { user: SessionUser, initialTangoToken?: string }) {
   const [state, formAction, isPending] = useActionState(changePassword, initialState);
+  const [tangoState, tangoFormAction, isTangoPending] = useActionState(updateTangoToken, initialState);
 
   return (
     <motion.div 
@@ -124,6 +125,72 @@ export default function UserProfile({ user }: { user: SessionUser }) {
                   className="p-4 rounded-lg bg-green-50 dark:bg-green-900/20 text-green-600 dark:text-green-400 text-sm border border-green-100 dark:border-green-900/30"
                 >
                   {state.success}
+                </motion.div>
+              )}
+            </form>
+          </section>
+
+          <div className="h-px bg-zinc-100 dark:bg-zinc-800" />
+
+          {/* Tango Token Form */}
+          <section>
+            <h3 className="text-base font-semibold text-zinc-900 dark:text-zinc-100 mb-4 flex items-center gap-2">
+              <LinkIcon className="w-4 h-4 text-zinc-400" />
+              Integración con Tango Axoft
+            </h3>
+            
+            <form action={tangoFormAction} className="space-y-5">
+              <div className="grid gap-5">
+                <div className="space-y-1.5">
+                  <label htmlFor="tangoToken" className="block text-sm font-medium text-zinc-700 dark:text-zinc-300">
+                    Access Token de Tango
+                  </label>
+                  <p className="text-xs text-zinc-500 mb-2">Genera este token desde el panel de integraciones de Tango Tiendas.</p>
+                  <input
+                    id="tangoToken"
+                    name="tangoToken"
+                    type="password"
+                    defaultValue={initialTangoToken}
+                    placeholder="Pega tu token aquí..."
+                    className="w-full px-3 py-2 border border-zinc-300 dark:border-zinc-700 rounded-lg bg-white dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 placeholder:text-zinc-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-shadow"
+                  />
+                </div>
+              </div>
+
+              <div className="pt-2">
+                <button
+                  type="submit"
+                  disabled={isTangoPending}
+                  className="w-full md:w-auto flex justify-center items-center px-6 py-2.5 border border-transparent rounded-lg shadow-sm text-sm font-medium text-white bg-zinc-900 dark:bg-zinc-700 hover:bg-zinc-800 dark:hover:bg-zinc-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-zinc-900 disabled:opacity-50 disabled:cursor-not-allowed transition-all active:scale-[0.98]"
+                >
+                  {isTangoPending ? (
+                    <>
+                      <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                      Guardando...
+                    </>
+                  ) : (
+                    "Guardar Token"
+                  )}
+                </button>
+              </div>
+
+              {tangoState?.error && (
+                <motion.div 
+                  initial={{ opacity: 0, height: 0 }}
+                  animate={{ opacity: 1, height: "auto" }}
+                  className="p-4 rounded-lg bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 text-sm border border-red-100 dark:border-red-900/30"
+                >
+                  {tangoState.error}
+                </motion.div>
+              )}
+              
+              {tangoState?.success && (
+                <motion.div 
+                  initial={{ opacity: 0, height: 0 }}
+                  animate={{ opacity: 1, height: "auto" }}
+                  className="p-4 rounded-lg bg-green-50 dark:bg-green-900/20 text-green-600 dark:text-green-400 text-sm border border-green-100 dark:border-green-900/30"
+                >
+                  {tangoState.success}
                 </motion.div>
               )}
             </form>
