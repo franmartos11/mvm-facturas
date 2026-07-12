@@ -595,20 +595,23 @@ export async function reanalyzeInvoice(invoiceId: number, filePath: string) {
   return analyzeInvoice(invoiceId, filePath);
 }
 
-export async function updateTangoToken(prevState: any, formData: FormData) {
+export async function updateTangoToken(
+  prevState: ActionState | null, 
+  formData: FormData
+): Promise<ActionState> {
   const token = formData.get('tangoToken') as string;
   const user = await getSession();
   
   if (!user) {
-    return { error: 'No autorizado' };
+    return { error: 'No autorizado', success: null };
   }
 
   try {
     await query('UPDATE users SET tango_token = $1 WHERE id = $2', [token || null, user.id]);
     revalidatePath('/profile');
-    return { success: 'Token de Tango actualizado correctamente' };
+    return { error: null, success: 'Token de Tango actualizado correctamente' };
   } catch (error) {
     console.error('Error updating tango token:', error);
-    return { error: 'Ocurrió un error al guardar el token' };
+    return { error: 'Ocurrió un error al guardar el token', success: null };
   }
 }
