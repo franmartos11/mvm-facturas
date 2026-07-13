@@ -1,4 +1,4 @@
-import { getInvoices, getAllInvoiceItems, getBudgets } from '@/app/actions';
+import { getInvoices, getAllInvoiceItems, getBudgets, getAnomalies } from '@/app/actions';
 import DashboardCharts from '@/components/DashboardCharts';
 import BudgetAlerts from '@/components/BudgetAlerts';
 import RecurringSuppliers from '@/components/RecurringSuppliers';
@@ -12,6 +12,8 @@ import TaxReport from '@/components/TaxReport';
 import PaymentMethodsPie from '@/components/PaymentMethodsPie';
 import ExpenseHeatmap from '@/components/ExpenseHeatmap';
 import ProductPriceTracker from '@/components/ProductPriceTracker';
+import AnomalyDetector from '@/components/AnomalyDetector';
+import AISavingsSuggestions from '@/components/AISavingsSuggestions';
 
 export const dynamic = 'force-dynamic';
 
@@ -19,6 +21,7 @@ export default async function AnalyticsPage() {
   const invoices = await getInvoices();
   const items = await getAllInvoiceItems();
   const budgets = await getBudgets();
+  const anomalies = await getAnomalies() as any[];
 
   return (
     <main className="min-h-screen p-8 bg-muted/40 font-[family-name:var(--font-geist-sans)]">
@@ -42,6 +45,12 @@ export default async function AnalyticsPage() {
 
         {/* Executive KPIs */}
         <BusinessKPIs invoices={invoices || []} items={items || []} />
+
+        {/* IA Profunda — Anomalías + Sugerencias */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <AnomalyDetector anomalies={anomalies} />
+          <AISavingsSuggestions />
+        </div>
 
         {/* Budgets & Recurring */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">

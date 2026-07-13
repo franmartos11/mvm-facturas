@@ -181,14 +181,17 @@ export default function TangoIntegrationManager({ pendingInvoices, initialMappin
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-border">
-                      {pendingInvoices.map((inv) => (
-                        <motion.tr 
-                          initial={{ opacity: 0 }}
-                          animate={{ opacity: 1 }}
-                          key={inv.id} 
-                          className="hover:bg-muted/30 transition-colors group"
-                        >
-                          <td className="px-4 py-3 text-center">
+                      {pendingInvoices.map((inv) => {
+                        const isSelected = selectedIds.includes(inv.id);
+                        return (
+                          <motion.tr 
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            key={inv.id} 
+                            onClick={() => toggleSelection(inv.id)}
+                            className={`transition-colors group cursor-pointer ${isSelected ? 'bg-primary/10 hover:bg-primary/15' : 'hover:bg-muted/30'}`}
+                          >
+                          <td className="px-4 py-3 text-center" onClick={(e) => e.stopPropagation()}>
                             <input 
                               type="checkbox" 
                               className="w-4 h-4 rounded border-input text-primary focus:ring-primary cursor-pointer"
@@ -206,7 +209,7 @@ export default function TangoIntegrationManager({ pendingInvoices, initialMappin
                           <td className="px-4 py-3 text-right font-medium">
                             ${Number(inv.total).toLocaleString('es-AR', { minimumFractionDigits: 2 })}
                           </td>
-                          <td className="px-4 py-3 text-right">
+                          <td className="px-4 py-3 text-right" onClick={(e) => e.stopPropagation()}>
                             <button
                               onClick={() => openSyncModal([inv.id])}
                               className="inline-flex items-center justify-center px-3 py-1.5 text-xs font-semibold text-primary bg-primary/10 rounded-lg opacity-0 group-hover:opacity-100 transition-all hover:bg-primary/20"
@@ -215,7 +218,8 @@ export default function TangoIntegrationManager({ pendingInvoices, initialMappin
                             </button>
                           </td>
                         </motion.tr>
-                      ))}
+                        );
+                      })}
                     </tbody>
                   </table>
                 </div>

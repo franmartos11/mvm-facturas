@@ -27,6 +27,8 @@ TABLE: invoices
   - total (numeric)
   - category (varchar) — "Alimentación" | "Hogar" | "Tecnología" | "Transporte" | "Salud" | "Servicios" | "Otros"
   - tags (text[])
+  - invoice_type (varchar) — 'compra' (gastos/costos) | 'venta' (ingresos/ventas a clientes)
+  - anomaly_score (numeric) — desviaciones estándar sobre la media del proveedor; >= 2.0 = anormal
 
 TABLE: invoice_items
   - id (integer, PK)
@@ -46,7 +48,10 @@ SQL RULES:
 6. Limit to 50 rows maximum.
 7. Do NOT use -- comments or /* */ blocks in SQL.
 8. When asked about specific products, amounts, or items, query invoice_items.description using ILIKE (e.g. ILIKE '%cerdo%').
+9. IMPORTANT: When the user asks about "gastos" or "costos" or "compras", filter by invoice_type = 'compra'. When they ask about "ingresos" or "ventas" or "facturación", filter by invoice_type = 'venta'. For general totals, include both.
+10. To find anomalous invoices, filter by anomaly_score >= 2.0 AND invoice_type = 'compra'.
 `;
+
 
 const ANSWER_PROMPT = (question: string, sqlResult: any[], sql: string) => `
 The user asked: "${question}"

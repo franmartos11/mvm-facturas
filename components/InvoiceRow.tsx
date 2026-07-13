@@ -153,6 +153,26 @@ export default function InvoiceRow({ invoice, isDuplicate = false }: InvoiceRowP
                   No es factura
                 </span>
               )}
+              {invoice.invoice_type && (
+                <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium border ${
+                  invoice.invoice_type === 'venta'
+                    ? 'bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-900/20 dark:text-emerald-400 dark:border-emerald-800'
+                    : 'bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-900/20 dark:text-blue-400 dark:border-blue-800'
+                }`}>
+                  {invoice.invoice_type === 'venta' ? '↑ Venta' : '↓ Compra'}
+                </span>
+              )}
+              {invoice.anomaly_score !== null && invoice.anomaly_score !== undefined && Number(invoice.anomaly_score) >= 2 && (
+                <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-semibold border flex items-center gap-0.5 ${
+                  Number(invoice.anomaly_score) >= 4
+                    ? 'bg-red-50 text-red-700 border-red-200 dark:bg-red-900/20 dark:text-red-400 dark:border-red-800'
+                    : Number(invoice.anomaly_score) >= 3
+                    ? 'bg-orange-50 text-orange-700 border-orange-200 dark:bg-orange-900/20 dark:text-orange-400 dark:border-orange-800'
+                    : 'bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-900/20 dark:text-amber-400 dark:border-amber-800'
+                }`}>
+                  ⚠ Anomalía ({Number(invoice.anomaly_score).toFixed(1)}σ)
+                </span>
+              )}
               {invoice.category && (
                 <span className={`text-[10px] px-2 py-0.5 rounded-full font-semibold border ${getCategoryColor(invoice.category)}`}>
                   {invoice.category}

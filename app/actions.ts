@@ -435,20 +435,22 @@ export async function analyzeInvoice(invoiceId: number, filePath: string) {
 ${HARDENED_INVOICE_ANALYSIS_PREAMBLE}
 
       Analiza esta factura e identifica:
-      1. Determina si el documento proporcionado es realmente una factura o ticket de compra. Si es una foto irrelevante, un paisaje, u otro documento, indica is_invoice: false.
-      2. El nombre del PROVEEDOR (ej: Mercadona, Endesa, Farmacia X). Si no es obvio, pon "Desconocido".
-      3. La fecha de la factura en formato YYYY-MM-DD. Si no hay, pon null.
-      4. El subtotal, los impuestos (IVA/tax) y el total final. Si no están claros, pon null o 0.
-      5. La forma de pago (payment_method): Efectivo, Tarjeta, Transferencia, Cuenta Corriente, u Otro.
-      6. La moneda (currency): ARS, USD, EUR, etc.
-      7. La fecha de vencimiento (due_date) en formato YYYY-MM-DD. Si no hay, pon null.
-      8. Una categoría PRINCIPAL para TODA LA FACTURA: "Alimentación", "Hogar", "Tecnología", "Transporte", "Salud", "Servicios" u "Otros".
-      9. DATOS EXTRA FACTURA: invoice_number (ej: 0001-00001234), supplier_cuit (CUIT/RUT del proveedor), customer_cuit (CUIT/RUT del cliente), customer_name (Nombre del cliente).
-      10. Los ítems comprados, asignando a cada uno una de esas mismas categorías. Además, para cada ítem intenta extraer: discount (descuento aplicado), tax_rate (porcentaje de impuesto, ej: 21.0), tax_amount (monto del impuesto), item_code (código/SKU), y unit_of_measure (kg, l, un, etc.).
+      1. Determina si el documento proporcionado es realmente una factura o ticket de compra/venta. Si es una foto irrelevante, un paisaje, u otro documento, indica is_invoice: false.
+      2. El TIPO DE FACTURA (invoice_type): determina si es una factura de "compra" (sos el comprador/cliente que recibe el documento de un proveedor) o de "venta" (sos el emisor/vendedor que emitió la factura a un cliente). Usa "compra" por defecto si no está claro.
+      3. El nombre del PROVEEDOR o EMISOR (ej: Mercadona, Endesa, Farmacia X). Si no es obvio, pon "Desconocido".
+      4. La fecha de la factura en formato YYYY-MM-DD. Si no hay, pon null.
+      5. El subtotal, los impuestos (IVA/tax) y el total final. Si no están claros, pon null o 0.
+      6. La forma de pago (payment_method): Efectivo, Tarjeta, Transferencia, Cuenta Corriente, u Otro.
+      7. La moneda (currency): ARS, USD, EUR, etc.
+      8. La fecha de vencimiento (due_date) en formato YYYY-MM-DD. Si no hay, pon null.
+      9. Una categoría PRINCIPAL para TODA LA FACTURA: "Alimentación", "Hogar", "Tecnología", "Transporte", "Salud", "Servicios" u "Otros".
+      10. DATOS EXTRA FACTURA: invoice_number (ej: 0001-00001234), supplier_cuit (CUIT/RUT del proveedor/emisor), customer_cuit (CUIT/RUT del cliente/receptor), customer_name (Nombre del cliente/receptor).
+      11. Los ítems comprados o vendidos, asignando a cada uno una de esas mismas categorías. Además, para cada ítem intenta extraer: discount (descuento aplicado), tax_rate (porcentaje de impuesto, ej: 21.0), tax_amount (monto del impuesto), item_code (código/SKU), y unit_of_measure (kg, l, un, etc.).
 
       Devuélveme SOLO un JSON válido con esta estructura exacta (nada más, ni markdown, ni texto adicional):
       {
         "is_invoice": true,
+        "invoice_type": "compra",
         "invoice_number": "0001-00001234",
         "supplier": "Nombre Proveedor",
         "supplier_cuit": "30-12345678-9",
@@ -531,12 +533,13 @@ ${HARDENED_INVOICE_ANALYSIS_PREAMBLE}
     const supplierCuit = parsedData.supplier_cuit || null;
     const customerCuit = parsedData.customer_cuit || null;
     const customerName = parsedData.customer_name || null;
+    const invoiceType: 'compra' | 'venta' = parsedData.invoice_type === 'venta' ? 'venta' : 'compra';
 
     await query(
       `UPDATE invoices 
-       SET status = 'analyzed', supplier = $1, invoice_date = $2, subtotal = $3, tax = $4, total = $5, category = $6, payment_method = $7, currency = $8, due_date = $9, invoice_number = $10, supplier_cuit = $11, customer_cuit = $12, customer_name = $13
-       WHERE id = $14`,
-      [supplier, invoiceDate, subtotal, tax, total, invoiceCategory, paymentMethod, currency, dueDate, invoiceNumber, supplierCuit, customerCuit, customerName, invoiceId]
+       SET status = 'analyzed', supplier = $1, invoice_date = $2, subtotal = $3, tax = $4, total = $5, category = $6, payment_method = $7, currency = $8, due_date = $9, invoice_number = $10, supplier_cuit = $11, customer_cuit = $12, customer_name = $13, invoice_type = $14
+       WHERE id = $15`,
+      [supplier, invoiceDate, subtotal, tax, total, invoiceCategory, paymentMethod, currency, dueDate, invoiceNumber, supplierCuit, customerCuit, customerName, invoiceType, invoiceId]
     );
 
     // Insertar ítems
@@ -556,6 +559,16 @@ ${HARDENED_INVOICE_ANALYSIS_PREAMBLE}
            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)`,
           [invoiceId, item.description || 'Sin descripción', quantity, unitPrice, totalPrice, item.category || 'Otros', discount, taxRate, taxAmount, itemCode, uom]
         );
+      }
+    }
+
+    // Calcular y guardar anomaly_score para facturas de compra (no para ventas)
+    if (invoiceType === 'compra' && total > 0) {
+      try {
+        await detectInvoiceAnomaly(invoiceId, supplier, total, user.id);
+      } catch (e) {
+        console.error('Error calculando anomaly_score:', e);
+        // No interrumpir el flujo si falla la detección de anomalías
       }
     }
 
@@ -614,4 +627,110 @@ export async function updateTangoToken(
     console.error('Error updating tango token:', error);
     return { error: 'Ocurrió un error al guardar el token', success: null };
   }
+}
+
+// ─── Anomaly Detection ─────────────────────────────────────────────────────────
+
+/**
+ * Calcula el anomaly_score de una factura de compra respecto al historial
+ * del mismo proveedor (ignorando la factura actual para no sesgar la media).
+ * Score = (total - media) / stdDev  →  ≥ 2.0 = anomalía (95% confianza)
+ * Solo aplica a facturas de compra (invoice_type = 'compra').
+ */
+async function detectInvoiceAnomaly(
+  invoiceId: number,
+  supplier: string,
+  total: number,
+  userId: number
+) {
+  if (!supplier || supplier === 'Desconocido' || total <= 0) return;
+
+  // Historial de facturas de compra del mismo proveedor (mínimo 2 para calcular σ)
+  const histRes = await query<{ total: string }>(
+    `SELECT total FROM invoices
+     WHERE user_id = $1
+       AND supplier ILIKE $2
+       AND invoice_type = 'compra'
+       AND status = 'analyzed'
+       AND id != $3
+       AND total IS NOT NULL AND total > 0`,
+    [userId, supplier, invoiceId]
+  );
+
+  const historicTotals = histRes.rows.map(r => Number(r.total));
+
+  if (historicTotals.length < 2) {
+    // No hay suficiente historial para calcular anomalía → score null
+    await query('UPDATE invoices SET anomaly_score = NULL WHERE id = $1', [invoiceId]);
+    return;
+  }
+
+  const n = historicTotals.length;
+  const mean = historicTotals.reduce((a, b) => a + b, 0) / n;
+  const variance = historicTotals.reduce((sum, v) => sum + Math.pow(v - mean, 2), 0) / n;
+  const stdDev = Math.sqrt(variance);
+
+  if (stdDev === 0) {
+    await query('UPDATE invoices SET anomaly_score = 0 WHERE id = $1', [invoiceId]);
+    return;
+  }
+
+  const score = (total - mean) / stdDev;
+
+  await query(
+    'UPDATE invoices SET anomaly_score = $1 WHERE id = $2',
+    [parseFloat(score.toFixed(3)), invoiceId]
+  );
+}
+
+/**
+ * Devuelve todas las facturas del usuario con anomaly_score >= umbral.
+ * Por defecto umbral = 2.0 (desviación estándar ≥ 2 → anomalía estadística).
+ * Solo aplica a facturas de compra.
+ */
+export async function getAnomalies(threshold = 2.0) {
+  const user = await getSession();
+  if (!user) return [];
+
+  const result = await query(
+    `SELECT id, filename, supplier, invoice_date, total, anomaly_score, category, invoice_type
+     FROM invoices
+     WHERE user_id = $1
+       AND invoice_type = 'compra'
+       AND anomaly_score >= $2
+       AND status = 'analyzed'
+     ORDER BY anomaly_score DESC
+     LIMIT 20`,
+    [user.id, threshold]
+  );
+
+  return result.rows;
+}
+
+/**
+ * Recalcula el anomaly_score de TODAS las facturas analizadas del usuario.
+ * Útil para correr retroactivamente en facturas ya existentes.
+ */
+export async function recalculateAllAnomalies() {
+  const user = await getSession();
+  if (!user) throw new Error('No autenticado');
+
+  const invoices = await query<{ id: number; supplier: string; total: string }>(
+    `SELECT id, supplier, total FROM invoices
+     WHERE user_id = $1 AND invoice_type = 'compra' AND status = 'analyzed' AND total > 0`,
+    [user.id]
+  );
+
+  let processed = 0;
+  for (const inv of invoices.rows) {
+    try {
+      await detectInvoiceAnomaly(inv.id, inv.supplier, Number(inv.total), user.id);
+      processed++;
+    } catch (e) {
+      console.error(`Error recalculando anomalía para factura ${inv.id}:`, e);
+    }
+  }
+
+  revalidatePath('/analytics');
+  return { success: true, processed };
 }
