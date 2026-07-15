@@ -25,7 +25,7 @@ export default function LandingPage() {
               Facturas <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-indigo-600 dark:from-blue-400 dark:to-indigo-400">Inteligentes</span>
             </h1>
             <p className="max-w-2xl mx-auto text-zinc-600 dark:text-zinc-400 text-xl leading-relaxed">
-              Automatiza tu contabilidad con IA. Procesa facturas, extrae datos y visualiza tus gastos en segundos, no horas.
+              Automatiza la contabilidad de tu empresa con IA. Procesa facturas, extrae datos y visualiza tus gastos corporativos en segundos, no horas.
             </p>
           </motion.div>
 
@@ -36,10 +36,10 @@ export default function LandingPage() {
             className="flex flex-col sm:flex-row gap-4 w-full justify-center"
           >
             <Link
-              href="/login"
+              href="/register"
               className="inline-flex items-center justify-center px-8 py-4 text-lg font-semibold rounded-xl text-white bg-blue-600 hover:bg-blue-700 transition-all shadow-lg hover:shadow-blue-500/25 hover:-translate-y-0.5"
             >
-              Empezar Gratis <ArrowRight className="ml-2 h-5 w-5" />
+              Registrar mi empresa <ArrowRight className="ml-2 h-5 w-5" />
             </Link>
             <Link
               href="#features"
@@ -248,12 +248,12 @@ export default function LandingPage() {
             <TestimonialCard 
               quote="La trazabilidad de precios nos ha permitido renegociar con proveedores y ahorrar un 15% anual."
               author="Carlos Ruiz"
-              role="Dueño de Restaurante"
+              role="Director de Compras"
             />
             <TestimonialCard 
-              quote="Simplemente funciona. La interfaz es limpia, rápida y el soporte es excelente. Totalmente recomendado."
+              quote="Simplemente funciona. La interfaz es limpia, rápida y el soporte es excelente para todo mi equipo."
               author="Ana López"
-              role="Contadora Independiente"
+              role="Gerente Contable"
             />
           </div>
         </div>
@@ -266,6 +266,10 @@ export default function LandingPage() {
           <p className="text-zinc-500 dark:text-zinc-400">Todo lo que necesitas saber antes de empezar.</p>
         </div>
         <div className="space-y-4 w-full">
+          <FaqItem 
+            question="¿Puedo agregar a mi equipo?" 
+            answer="Sí, el sistema está diseñado para empresas. Puedes invitar a otros miembros (contadores, administradores) y gestionar sus permisos para colaborar en el mismo espacio de trabajo." 
+          />
           <FaqItem 
             question="¿Es gratuito empezar?" 
             answer="Sí, tenemos un plan gratuito que te permite procesar hasta 50 facturas al mes sin costo alguno. No se requiere tarjeta de crédito." 
@@ -298,7 +302,7 @@ export default function LandingPage() {
           </p>
           <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} className="relative z-10">
             <Link
-              href="/login"
+              href="/register"
               className="inline-flex items-center justify-center px-8 py-4 text-lg font-bold rounded-xl bg-white text-blue-600 shadow-xl hover:shadow-2xl transition-all"
             >
               Crear cuenta gratis

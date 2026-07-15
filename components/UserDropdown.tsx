@@ -5,9 +5,9 @@ import Link from "next/link";
 import { type SessionUser } from '@/lib/auth';
 import { signOut } from "@/app/actions";
 import { motion, AnimatePresence } from "framer-motion";
-import { User as UserIcon, LogOut, KeyRound, ChevronDown, Settings } from "lucide-react";
+import { User as UserIcon, LogOut, KeyRound, ChevronDown, Settings, Building2 } from "lucide-react";
 
-export default function UserDropdown({ user }: { user: SessionUser }) {
+export default function UserDropdown({ user, companyName }: { user: SessionUser, companyName: string }) {
   const [isOpen, setIsOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
@@ -30,10 +30,11 @@ export default function UserDropdown({ user }: { user: SessionUser }) {
         className="flex items-center gap-2 group p-1 pr-3 rounded-full hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors border border-transparent hover:border-zinc-200 dark:hover:border-zinc-700"
       >
         <div className="w-8 h-8 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center font-semibold text-sm">
-            {user.email?.[0].toUpperCase()}
+            {companyName ? companyName[0].toUpperCase() : user.email?.[0].toUpperCase()}
         </div>
         <div className="hidden sm:flex flex-col items-start">
-            <span className="text-xs font-medium text-zinc-900 dark:text-zinc-100">{user.email?.split('@')[0]}</span>
+            <span className="text-xs font-bold text-zinc-900 dark:text-zinc-100">{companyName || 'Mi Empresa'}</span>
+            <span className="text-[10px] text-zinc-500 font-medium">{user.email?.split('@')[0]}</span>
         </div>
         <ChevronDown className={`w-4 h-4 text-zinc-500 transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`} />
       </button>
@@ -50,15 +51,27 @@ export default function UserDropdown({ user }: { user: SessionUser }) {
             <div className="px-3 py-2 border-b border-zinc-100 dark:border-zinc-800 mb-1">
               <p className="text-xs text-zinc-500 dark:text-zinc-400">Conectado como</p>
               <p className="text-sm font-medium text-zinc-900 dark:text-zinc-100 truncate">{user.email}</p>
+              <p className="text-[10px] text-zinc-400 mt-0.5">{user.role === 'admin' ? 'Administrador' : 'Miembro'}</p>
             </div>
 
+            {user.role === 'admin' && (
+              <Link
+                href="/settings/company"
+                onClick={() => setIsOpen(false)}
+                className="flex items-center gap-2 px-3 py-2 text-sm text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-lg transition-colors"
+              >
+                <Building2 className="w-4 h-4" />
+                Mi Empresa
+              </Link>
+            )}
+
             <Link
-              href="/profile"
+              href="/settings/profile"
               onClick={() => setIsOpen(false)}
               className="flex items-center gap-2 px-3 py-2 text-sm text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-lg transition-colors"
             >
               <KeyRound className="w-4 h-4" />
-              Cambiar Contraseña
+              Perfil y Seguridad
             </Link>
 
             <Link

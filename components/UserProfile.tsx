@@ -11,7 +11,7 @@ const initialState = {
   success: null as string | null,
 };
 
-export default function UserProfile({ user, initialTangoToken }: { user: SessionUser, initialTangoToken?: string }) {
+export default function UserProfile({ user, initialTangoToken, companyName }: { user: SessionUser, initialTangoToken?: string, companyName: string }) {
   const [state, formAction, isPending] = useActionState(changePassword, initialState);
   const [tangoState, tangoFormAction, isTangoPending] = useActionState(updateTangoToken, initialState);
 
@@ -47,6 +47,23 @@ export default function UserProfile({ user, initialTangoToken }: { user: Session
               <span className="px-2 py-1 text-xs font-medium bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 rounded-full">
                 Verificado
               </span>
+            </div>
+          </div>
+          
+          <div className="grid gap-2">
+            <label className="text-sm font-medium text-zinc-500 dark:text-zinc-400">Información de Empresa</label>
+            <div className="flex flex-col gap-3 p-4 rounded-lg bg-zinc-50 dark:bg-zinc-800/50 border border-zinc-200 dark:border-zinc-800 text-zinc-700 dark:text-zinc-300">
+              <div className="flex items-center justify-between">
+                <span className="text-sm font-medium">Empresa actual</span>
+                <span className="font-semibold text-sm">{companyName}</span>
+              </div>
+              <div className="h-px bg-zinc-200 dark:bg-zinc-700 w-full" />
+              <div className="flex items-center justify-between">
+                <span className="text-sm font-medium">Rol</span>
+                <span className="px-2 py-1 text-xs font-medium bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-400 rounded-full">
+                  {user.role === 'admin' ? 'Administrador' : 'Miembro'}
+                </span>
+              </div>
             </div>
           </div>
 

@@ -10,9 +10,25 @@ CREATE TABLE IF NOT EXISTS users (
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
+CREATE TABLE IF NOT EXISTS companies (
+  id SERIAL PRIMARY KEY,
+  name TEXT NOT NULL,
+  cuit TEXT,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS company_members (
+  id SERIAL PRIMARY KEY,
+  company_id INTEGER NOT NULL REFERENCES companies(id) ON DELETE CASCADE,
+  user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  role TEXT NOT NULL DEFAULT 'member', -- 'admin' | 'member'
+  joined_at TIMESTAMPTZ DEFAULT NOW(),
+  UNIQUE(company_id, user_id)
+);
+
 CREATE TABLE IF NOT EXISTS invoices (
   id SERIAL PRIMARY KEY,
-  user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  company_id INTEGER NOT NULL REFERENCES companies(id) ON DELETE CASCADE,
   filename TEXT NOT NULL,
   file_path TEXT NOT NULL,
   status TEXT DEFAULT 'pending',
@@ -35,11 +51,11 @@ CREATE TABLE IF NOT EXISTS invoices (
 
 CREATE TABLE IF NOT EXISTS budgets (
   id SERIAL PRIMARY KEY,
-  user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  company_id INTEGER NOT NULL REFERENCES companies(id) ON DELETE CASCADE,
   category TEXT NOT NULL,
   amount NUMERIC NOT NULL,
   created_at TIMESTAMPTZ DEFAULT NOW(),
-  UNIQUE(user_id, category)
+  UNIQUE(company_id, category)
 );
 
 CREATE TABLE IF NOT EXISTS invoice_items (

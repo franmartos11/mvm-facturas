@@ -73,7 +73,7 @@ export async function changePassword(
 export async function getUserSettings() {
   const user = await getSession();
   if (!user) return null;
-  const result = await query('SELECT ai_url, ai_model FROM users WHERE id = $1', [user.id]);
+  const result = await query('SELECT ai_url, ai_model FROM users WHERE id = $1', [user.companyId]);
   return result.rows[0] || null;
 }
 
@@ -116,7 +116,7 @@ export async function uploadPdf(formData: FormData) {
   const hash = crypto.createHash('sha256').update(buffer).digest('hex');
   
   // Verificar duplicados en base de datos
-  const existing = await query('SELECT id FROM invoices WHERE user_id = $1 AND file_hash = $2', [user.id, hash]);
+  const existing = await query('SELECT id FROM invoices WHERE company_id = $1 AND file_hash = $2', [user.companyId, hash]);
   if (existing.rows.length > 0) {
     throw new Error('Este archivo ya ha sido subido anteriormente.');
   }
@@ -137,8 +137,8 @@ export async function uploadPdf(formData: FormData) {
 
   // Insertar en la DB
   const insertResult = await query<{ id: number }>(
-    'INSERT INTO invoices (user_id, filename, file_path, file_hash) VALUES ($1, $2, $3, $4) RETURNING id',
-    [user.id, file.name, relPath, hash]
+    'INSERT INTO invoices (company_id, filename, file_path, file_hash) VALUES ($1, $2, $3, $4) RETURNING id',
+    [user.companyId, file.name, relPath, hash]
   );
 
   const invoiceId = insertResult.rows[0].id;
@@ -152,8 +152,8 @@ export async function getInvoices() {
   if (!user) return [];
 
   const result = await query(
-    'SELECT * FROM invoices WHERE user_id = $1 ORDER BY created_at DESC',
-    [user.id]
+    'SELECT * FROM invoices WHERE company_id = $1 ORDER BY created_at DESC',
+    [user.companyId]
   );
 
   return result.rows;
@@ -187,8 +187,8 @@ export async function deleteInvoice(invoiceId: number, filePath: string) {
 
   // Verificar propiedad antes de borrar
   const check = await query(
-    'SELECT id FROM invoices WHERE id = $1 AND user_id = $2',
-    [invoiceId, user.id]
+    'SELECT id FROM invoices WHERE id = $1 AND company_id = $2',
+    [invoiceId, user.companyId]
   );
   if (check.rows.length === 0) throw new Error('Factura no encontrada');
 
@@ -202,9 +202,9 @@ export async function deleteInvoice(invoiceId: number, filePath: string) {
   }
 
   // Borrar de la DB (cascade elimina invoice_items)
-  await query('DELETE FROM invoices WHERE id = $1 AND user_id = $2', [
+  await query('DELETE FROM invoices WHERE id = $1 AND company_id = $2', [
     invoiceId,
-    user.id,
+    user.companyId,
   ]);
 
   revalidatePath('/');
@@ -217,8 +217,8 @@ export async function updateInvoiceTags(invoiceId: number, tags: string[]) {
 
   // Verify ownership
   const check = await query(
-    'SELECT id FROM invoices WHERE id = $1 AND user_id = $2',
-    [invoiceId, user.id]
+    'SELECT id FROM invoices WHERE id = $1 AND company_id = $2',
+    [invoiceId, user.companyId]
   );
   if (check.rows.length === 0) throw new Error('Factura no encontrada');
 
@@ -232,7 +232,7 @@ export async function updateInvoiceTags(invoiceId: number, tags: string[]) {
 export async function getBudgets() {
   const user = await getSession();
   if (!user) return [];
-  const result = await query('SELECT category, amount FROM budgets WHERE user_id = $1', [user.id]);
+  const result = await query('SELECT category, amount FROM budgets WHERE company_id = $1', [user.companyId]);
   return result.rows;
 }
 
@@ -241,10 +241,10 @@ export async function upsertBudget(category: string, amount: number) {
   if (!user) throw new Error('No autenticado');
   
   await query(`
-    INSERT INTO budgets (user_id, category, amount)
+    INSERT INTO budgets (company_id, category, amount)
     VALUES ($1, $2, $3)
-    ON CONFLICT (user_id, category) DO UPDATE SET amount = $3
-  `, [user.id, category, amount]);
+    ON CONFLICT (company_id, category) DO UPDATE SET amount = $3
+  `, [user.companyId, category, amount]);
   
   revalidatePath('/settings');
   revalidatePath('/');
@@ -272,8 +272,8 @@ export async function updateInvoiceItem(
   const check = await query(
     `SELECT ii.id FROM invoice_items ii
      JOIN invoices inv ON inv.id = ii.invoice_id
-     WHERE ii.id = $1 AND inv.user_id = $2`,
-    [itemId, user.id]
+     WHERE ii.id = $1 AND inv.company_id = $2`,
+    [itemId, user.companyId]
   );
   if (check.rows.length === 0) throw new Error('Ítem no encontrado');
 
@@ -315,9 +315,9 @@ export async function getAllInvoiceItems() {
     `SELECT ii.*, inv.filename, inv.file_path, inv.created_at AS invoice_created_at, inv.invoice_date, inv.supplier
      FROM invoice_items ii
      JOIN invoices inv ON inv.id = ii.invoice_id
-     WHERE inv.user_id = $1
+     WHERE inv.company_id = $1
      ORDER BY ii.id DESC`,
-    [user.id]
+    [user.companyId]
   );
 
   return result.rows;
@@ -333,7 +333,7 @@ export async function globalSearch(q: string) {
   const invoicesRes = await query(`
     SELECT id, filename, supplier, invoice_date, total
     FROM invoices
-    WHERE user_id = $1 
+    WHERE company_id = $1 
       AND (filename ILIKE $2 OR supplier ILIKE $2 OR array_to_string(tags, ', ') ILIKE $2)
     LIMIT 5
   `, [user.id, queryTerm]);
@@ -343,7 +343,7 @@ export async function globalSearch(q: string) {
     SELECT ii.id, ii.description, ii.category, ii.total_price, inv.id as invoice_id, inv.filename
     FROM invoice_items ii
     JOIN invoices inv ON inv.id = ii.invoice_id
-    WHERE inv.user_id = $1
+    WHERE inv.company_id = $1
       AND (ii.description ILIKE $2 OR ii.category ILIKE $2)
     LIMIT 5
   `, [user.id, queryTerm]);
@@ -364,7 +364,7 @@ export async function trackProductPrice(productName: string) {
     SELECT ii.id, ii.description, ii.unit_price, ii.quantity, ii.total_price, inv.invoice_date, inv.created_at, inv.supplier, inv.filename
     FROM invoice_items ii
     JOIN invoices inv ON inv.id = ii.invoice_id
-    WHERE inv.user_id = $1
+    WHERE inv.company_id = $1
       AND inv.status = 'analyzed'
       AND ii.description ILIKE $2
     ORDER BY COALESCE(inv.invoice_date, inv.created_at::date) ASC
@@ -391,8 +391,8 @@ export async function analyzeInvoice(invoiceId: number, filePath: string) {
 
     // Verificar propiedad y estado
     const invoiceResult = await query(
-      'SELECT id, status FROM invoices WHERE id = $1 AND user_id = $2',
-      [invoiceId, user.id]
+      'SELECT id, status FROM invoices WHERE id = $1 AND company_id = $2',
+      [invoiceId, user.companyId]
     );
     const invoice = invoiceResult.rows[0];
     if (!invoice) throw new Error('Factura no encontrada');
@@ -565,7 +565,7 @@ ${HARDENED_INVOICE_ANALYSIS_PREAMBLE}
     // Calcular y guardar anomaly_score para facturas de compra (no para ventas)
     if (invoiceType === 'compra' && total > 0) {
       try {
-        await detectInvoiceAnomaly(invoiceId, supplier, total, user.id);
+        await detectInvoiceAnomaly(invoiceId, supplier, total, user.companyId);
       } catch (e) {
         console.error('Error calculando anomaly_score:', e);
         // No interrumpir el flujo si falla la detección de anomalías
@@ -590,8 +590,8 @@ export async function reanalyzeInvoice(invoiceId: number, filePath: string) {
 
   // Verificar propiedad
   const invoiceResult = await query(
-    'SELECT id FROM invoices WHERE id = $1 AND user_id = $2',
-    [invoiceId, user.id]
+    'SELECT id FROM invoices WHERE id = $1 AND company_id = $2',
+    [invoiceId, user.companyId]
   );
   
   if (invoiceResult.rows.length === 0) {
@@ -641,20 +641,20 @@ async function detectInvoiceAnomaly(
   invoiceId: number,
   supplier: string,
   total: number,
-  userId: number
+  companyId: number
 ) {
   if (!supplier || supplier === 'Desconocido' || total <= 0) return;
 
   // Historial de facturas de compra del mismo proveedor (mínimo 2 para calcular σ)
   const histRes = await query<{ total: string }>(
     `SELECT total FROM invoices
-     WHERE user_id = $1
+     WHERE company_id = $1
        AND supplier ILIKE $2
        AND invoice_type = 'compra'
        AND status = 'analyzed'
        AND id != $3
        AND total IS NOT NULL AND total > 0`,
-    [userId, supplier, invoiceId]
+    [companyId, supplier, invoiceId]
   );
 
   const historicTotals = histRes.rows.map(r => Number(r.total));
@@ -695,7 +695,7 @@ export async function getAnomalies(threshold = 2.0) {
   const result = await query(
     `SELECT id, filename, supplier, invoice_date, total, anomaly_score, category, invoice_type
      FROM invoices
-     WHERE user_id = $1
+     WHERE company_id = $1
        AND invoice_type = 'compra'
        AND anomaly_score >= $2
        AND status = 'analyzed'
@@ -717,14 +717,14 @@ export async function recalculateAllAnomalies() {
 
   const invoices = await query<{ id: number; supplier: string; total: string }>(
     `SELECT id, supplier, total FROM invoices
-     WHERE user_id = $1 AND invoice_type = 'compra' AND status = 'analyzed' AND total > 0`,
+     WHERE company_id = $1 AND invoice_type = 'compra' AND status = 'analyzed' AND total > 0`,
     [user.id]
   );
 
   let processed = 0;
   for (const inv of invoices.rows) {
     try {
-      await detectInvoiceAnomaly(inv.id, inv.supplier, Number(inv.total), user.id);
+      await detectInvoiceAnomaly(inv.id, inv.supplier, Number(inv.total), user.companyId);
       processed++;
     } catch (e) {
       console.error(`Error recalculando anomalía para factura ${inv.id}:`, e);

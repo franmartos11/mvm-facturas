@@ -9,6 +9,8 @@ const JWT_EXPIRY = '7d';
 export type SessionUser = {
   id: number;
   email: string;
+  companyId: number;
+  role: 'admin' | 'member';
 };
 
 function getSecret(): Uint8Array {
@@ -33,7 +35,7 @@ export async function verifyPassword(
 // ─── JWT ────────────────────────────────────────────────────────────────────
 
 export async function createToken(user: SessionUser): Promise<string> {
-  return new SignJWT({ id: user.id, email: user.email })
+  return new SignJWT({ id: user.id, email: user.email, companyId: user.companyId, role: user.role })
     .setProtectedHeader({ alg: 'HS256' })
     .setIssuedAt()
     .setExpirationTime(JWT_EXPIRY)
@@ -46,6 +48,8 @@ export async function verifyToken(token: string): Promise<SessionUser | null> {
     return {
       id: payload.id as number,
       email: payload.email as string,
+      companyId: payload.companyId as number,
+      role: payload.role as ('admin' | 'member'),
     };
   } catch {
     return null;

@@ -18,6 +18,8 @@ export default function InvoiceSelectionList({ invoices }: InvoiceSelectionListP
   const [isProcessing, setIsProcessing] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [isSelectionMode, setIsSelectionMode] = useState(false);
+  const [bulkMessage, setBulkMessage] = useState<{type: 'success' | 'error', text: string} | null>(null);
+  const [bulkProgress, setBulkProgress] = useState<{current: number, total: number} | null>(null);
   
   const [filters, setFilters] = useState<FilterState>({
     search: '',
@@ -106,31 +108,66 @@ export default function InvoiceSelectionList({ invoices }: InvoiceSelectionListP
       const inv = invoices.find(i => i.id === id);
       return inv && inv.status !== 'analyzed';
     });
-    // ... rest of logic uses selectedIds so it's fine
     if (idsToAnalyze.length === 0) return;
 
-    setIsProcessing(true);
-    let errorCount = 0;
-
-    for (const id of idsToAnalyze) {
-      const invoice = invoices.find(inv => inv.id === id);
-      if (!invoice) continue;
-
-      try {
-        await analyzeInvoice(id, invoice.file_path);
-      } catch (error) {
-        console.error(`Error analyzing invoice ${id}:`, error);
-        errorCount++;
+    // Optional AI Ping before starting
+    try {
+      const pingRes = await fetch('/api/ai-ping');
+      const data = await pingRes.json();
+      if (!pingRes.ok || data.status !== 'ok') {
+        setBulkMessage({ type: 'error', text: 'Error conectando con la IA local. Verifica que LM Studio esté corriendo.' });
+        return;
       }
+    } catch {
+      setBulkMessage({ type: 'error', text: 'Error de red verificando la IA local.' });
+      return;
     }
 
+    setIsProcessing(true);
+    setBulkMessage(null);
+    setBulkProgress({ current: 0, total: idsToAnalyze.length });
+    
+    let errorCount = 0;
+    let completedCount = 0;
+    
+    // Concurrency limit helper
+    const limit = 3;
+    let i = 0;
+    
+    const executeNext = async (): Promise<void> => {
+      if (i >= idsToAnalyze.length) return;
+      const id = idsToAnalyze[i++];
+      const invoice = invoices.find(inv => inv.id === id);
+      
+      if (invoice) {
+        try {
+          await analyzeInvoice(id, invoice.file_path);
+        } catch (error) {
+          console.error(`Error analyzing invoice ${id}:`, error);
+          errorCount++;
+        }
+      }
+      
+      completedCount++;
+      setBulkProgress({ current: completedCount, total: idsToAnalyze.length });
+      return executeNext();
+    };
+
+    const workers = Array.from({ length: Math.min(limit, idsToAnalyze.length) }, () => executeNext());
+    await Promise.all(workers);
+
     setIsProcessing(false);
+    setBulkProgress(null);
     setSelectedIds([]); 
     router.refresh();
 
     if (errorCount > 0) {
-      alert(`Análisis completado con ${errorCount} errores.`);
+      setBulkMessage({ type: 'error', text: `Análisis completado con ${errorCount} errores.` });
+    } else {
+      setBulkMessage({ type: 'success', text: `Se analizaron ${idsToAnalyze.length} facturas correctamente.` });
     }
+    
+    setTimeout(() => setBulkMessage(null), 5000);
   };
 
   const handleBulkDeleteClick = () => {
@@ -236,47 +273,76 @@ export default function InvoiceSelectionList({ invoices }: InvoiceSelectionListP
 
       {/* Bulk Actions Header */}
       {isSelectionMode && filteredInvoices.length > 0 && (
-        <div className="flex items-center justify-between bg-muted/50 p-3 rounded-lg border border-border">
-          <div className="flex items-center gap-3">
-            <input 
-              type="checkbox"
-              className="w-4 h-4 rounded border-input text-primary focus:ring-primary"
-              checked={selectedIds.length > 0 && selectedIds.length === filteredInvoices.length}
-              onChange={toggleSelectAll}
-            />
-            <span className="text-sm text-foreground font-medium">
-              {selectedIds.length} seleccionada{selectedIds.length !== 1 ? 's' : ''}
-            </span>
-          </div>
+        <div className="flex flex-col gap-3 bg-muted/50 p-3 rounded-lg border border-border animate-in slide-in-from-top-2">
           
-          <div className="flex items-center gap-2">
-            <button
-              onClick={handleBulkDeleteClick}
-              disabled={selectedIds.length === 0 || isProcessing}
-              className={`
-                px-4 py-2 text-sm font-medium rounded-md transition-all
-                ${selectedIds.length > 0 && !isProcessing
-                  ? 'bg-destructive/10 text-destructive hover:bg-destructive/20 border border-destructive/20'
-                  : 'bg-muted text-muted-foreground cursor-not-allowed'
-                }
-              `}
-            >
-              Borrar
-            </button>
+          {bulkMessage && (
+            <div className={`p-3 rounded-lg text-sm font-medium flex items-center gap-2 ${
+              bulkMessage.type === 'success' 
+                ? 'bg-emerald-50 text-emerald-700 border border-emerald-200 dark:bg-emerald-900/20 dark:text-emerald-400 dark:border-emerald-800' 
+                : 'bg-red-50 text-red-700 border border-red-200 dark:bg-red-900/20 dark:text-red-400 dark:border-red-800'
+            }`}>
+              {bulkMessage.type === 'success' ? '✅' : '❌'} {bulkMessage.text}
+            </div>
+          )}
+          
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <input 
+                type="checkbox"
+                className="w-4 h-4 rounded border-input text-primary focus:ring-primary"
+                checked={selectedIds.length > 0 && selectedIds.length === filteredInvoices.length}
+                onChange={toggleSelectAll}
+                disabled={isProcessing}
+              />
+              <span className="text-sm text-foreground font-medium flex items-center gap-2">
+                {selectedIds.length} seleccionada{selectedIds.length !== 1 ? 's' : ''}
+                {isProcessing && bulkProgress && (
+                  <span className="text-xs text-primary bg-primary/10 px-2 py-0.5 rounded-full animate-pulse">
+                    Procesando {bulkProgress.current} de {bulkProgress.total}...
+                  </span>
+                )}
+              </span>
+            </div>
             
-            <button
-              onClick={handleBulkAnalyze}
-              disabled={analyzableCount === 0 || isProcessing}
-              className={`
-                px-4 py-2 text-sm font-medium rounded-md transition-all
-                ${analyzableCount > 0 && !isProcessing
-                  ? 'bg-primary text-primary-foreground hover:bg-primary/90 shadow-sm'
-                  : 'bg-muted text-muted-foreground cursor-not-allowed'
-                }
-              `}
-            >
-              {isProcessing ? 'Procesando...' : `Analizar (${analyzableCount})`}
-            </button>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={handleBulkDeleteClick}
+                disabled={selectedIds.length === 0 || isProcessing}
+                className={`
+                  px-4 py-2 text-sm font-medium rounded-md transition-all
+                  ${selectedIds.length > 0 && !isProcessing
+                    ? 'bg-destructive/10 text-destructive hover:bg-destructive/20 border border-destructive/20'
+                    : 'bg-muted text-muted-foreground cursor-not-allowed'
+                  }
+                `}
+              >
+                Borrar
+              </button>
+              
+              <button
+                onClick={handleBulkAnalyze}
+                disabled={analyzableCount === 0 || isProcessing}
+                className={`
+                  px-4 py-2 text-sm font-medium rounded-md transition-all flex items-center gap-2
+                  ${analyzableCount > 0 && !isProcessing
+                    ? 'bg-primary text-primary-foreground hover:bg-primary/90 shadow-sm'
+                    : 'bg-muted text-muted-foreground cursor-not-allowed'
+                  }
+                `}
+              >
+                {isProcessing ? (
+                  <>
+                    <svg className="w-4 h-4 animate-spin text-current" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                    Procesando...
+                  </>
+                ) : (
+                  `Analizar (${analyzableCount})`
+                )}
+              </button>
+            </div>
           </div>
         </div>
       )}

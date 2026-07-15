@@ -3,7 +3,7 @@ import type { NextRequest } from 'next/server';
 import { getSessionFromRequest } from '@/lib/auth';
 
 // Rutas públicas que no requieren autenticación
-const PUBLIC_PATHS = ['/', '/login', '/auth'];
+const PUBLIC_PATHS = ['/', '/login', '/register', '/auth'];
 
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
