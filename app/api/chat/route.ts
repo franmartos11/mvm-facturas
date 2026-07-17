@@ -12,11 +12,11 @@ import {
 
 // ─── Schema description sent to the AI ────────────────────────────────────────
 const DB_SCHEMA = (userId: number) => `
-DATABASE SCHEMA (PostgreSQL, read-only access, user_id = ${userId}):
+DATABASE SCHEMA (PostgreSQL, read-only access, company_id = ${userId}):
 
 TABLE: invoices
   - id (integer, PK)
-  - user_id (integer) ← ALWAYS filter by this = ${userId}
+  - company_id (integer) ← ALWAYS filter by this = ${userId}
   - filename (varchar)
   - supplier (varchar)
   - invoice_date (date)
@@ -40,7 +40,7 @@ TABLE: invoice_items
   - category (varchar)
 
 SQL RULES:
-1. ALWAYS include WHERE user_id = ${userId} or JOIN that enforces user_id = ${userId}.
+1. ALWAYS include WHERE company_id = ${userId} or JOIN that enforces company_id = ${userId}.
 2. ONLY SELECT. Never UPDATE, INSERT, DELETE, ALTER, DROP, TRUNCATE, EXECUTE.
 3. Filter invoices by status = 'analyzed' unless the user explicitly asks otherwise.
 4. For "este mes": EXTRACT(MONTH FROM invoice_date) = EXTRACT(MONTH FROM CURRENT_DATE) AND EXTRACT(YEAR FROM invoice_date) = EXTRACT(YEAR FROM CURRENT_DATE)
@@ -148,12 +148,12 @@ export async function POST(req: NextRequest) {
       }
 
       const sessionRes = await query(
-        'INSERT INTO chat_sessions (user_id, title) VALUES ($1, $2) RETURNING id',
-        [user.id, title]
+        'INSERT INTO chat_sessions (company_id, title) VALUES ($1, $2) RETURNING id',
+        [user.companyId, title]
       );
       currentSessionId = Number(sessionRes.rows[0].id);
     } else {
-      await query('UPDATE chat_sessions SET updated_at = now() WHERE id = $1 AND user_id = $2', [currentSessionId, user.id]);
+      await query('UPDATE chat_sessions SET updated_at = now() WHERE id = $1 AND company_id = $2', [currentSessionId, user.companyId]);
     }
 
     // ── Fetch attached invoices context ────────────────────────────────────
@@ -165,8 +165,8 @@ export async function POST(req: NextRequest) {
       const safeIds = attachedInvoiceIds.slice(0, 3).filter(id => Number.isInteger(id) && id > 0);
       if (safeIds.length > 0) {
         const invRes = await query<any>(
-          `SELECT id, supplier, invoice_date, invoice_number, total FROM invoices WHERE id = ANY($1::int[]) AND user_id = $2`,
-          [safeIds, user.id]
+          `SELECT id, supplier, invoice_date, invoice_number, total FROM invoices WHERE id = ANY($1::int[]) AND company_id = $2`,
+          [safeIds, user.companyId]
         );
         const itemsRes = await query<any>(
           `SELECT invoice_id, description, quantity, unit_price, total_price FROM invoice_items WHERE invoice_id = ANY($1::int[]) ORDER BY invoice_id, id`,
@@ -252,12 +252,12 @@ If the question is NOT about financial data, invoices, products bought, or busin
       }
 
       await query(
-        'INSERT INTO chat_history (user_id, session_id, role, content) VALUES ($1, $2, $3, $4)',
-        [user.id, currentSessionId, 'user', message]
+        'INSERT INTO chat_history (company_id, session_id, role, content) VALUES ($1, $2, $3, $4)',
+        [user.companyId, currentSessionId, 'user', message]
       );
       await query(
-        'INSERT INTO chat_history (user_id, session_id, role, content) VALUES ($1, $2, $3, $4)',
-        [user.id, currentSessionId, 'assistant', answer]
+        'INSERT INTO chat_history (company_id, session_id, role, content) VALUES ($1, $2, $3, $4)',
+        [user.companyId, currentSessionId, 'assistant', answer]
       );
 
       return NextResponse.json({ answer, sessionId: currentSessionId });
@@ -342,12 +342,12 @@ Write a clear, natural answer in Spanish.
 
     // ── Step 6: Save to history ───────────────────────────────────────────────
     await query(
-      'INSERT INTO chat_history (user_id, session_id, role, content) VALUES ($1, $2, $3, $4)',
-      [user.id, currentSessionId, 'user', message]
+      'INSERT INTO chat_history (company_id, session_id, role, content) VALUES ($1, $2, $3, $4)',
+      [user.companyId, currentSessionId, 'user', message]
     );
     await query(
-      'INSERT INTO chat_history (user_id, session_id, role, content, sql_query) VALUES ($1, $2, $3, $4, $5)',
-      [user.id, currentSessionId, 'assistant', answer, extractedSql]
+      'INSERT INTO chat_history (company_id, session_id, role, content, sql_query) VALUES ($1, $2, $3, $4, $5)',
+      [user.companyId, currentSessionId, 'assistant', answer, extractedSql]
     );
 
     return NextResponse.json({
@@ -375,8 +375,8 @@ export async function GET(req: NextRequest) {
   }
 
   const result = await query(
-    'SELECT role, content, sql_query, created_at FROM chat_history WHERE user_id = $1 AND session_id = $2 ORDER BY created_at ASC',
-    [user.id, sessionId]
+    'SELECT role, content, sql_query, created_at FROM chat_history WHERE company_id = $1 AND session_id = $2 ORDER BY created_at ASC',
+    [user.companyId, sessionId]
   );
 
   return NextResponse.json({ history: result.rows });
@@ -386,6 +386,6 @@ export async function DELETE() {
   const user = await getSession();
   if (!user) return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
 
-  await query('DELETE FROM chat_history WHERE user_id = $1', [user.id]);
+  await query('DELETE FROM chat_history WHERE company_id = $1', [user.companyId]);
   return NextResponse.json({ success: true });
 }

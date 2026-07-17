@@ -29,17 +29,17 @@ export async function POST(req: NextRequest) {
       for (const mapping of newMappings) {
         if (!mapping.mapping_type || !mapping.source_name || !mapping.tango_code) continue;
         await query(
-          `INSERT INTO tango_mappings (user_id, mapping_type, source_name, tango_code) 
+          `INSERT INTO tango_mappings (company_id, mapping_type, source_name, tango_code) 
            VALUES ($1, $2, $3, $4)
-           ON CONFLICT (user_id, mapping_type, source_name) 
+           ON CONFLICT (company_id, mapping_type, source_name) 
            DO UPDATE SET tango_code = EXCLUDED.tango_code, created_at = CURRENT_TIMESTAMP`,
-          [user.id, mapping.mapping_type, mapping.source_name, mapping.tango_code]
+          [user.companyId, mapping.mapping_type, mapping.source_name, mapping.tango_code]
         );
       }
     }
 
     // 3. Get all user mappings
-    const mappingsRes = await query<any>('SELECT mapping_type, source_name, tango_code FROM tango_mappings WHERE user_id = $1', [user.id]);
+    const mappingsRes = await query<any>('SELECT mapping_type, source_name, tango_code FROM tango_mappings WHERE company_id = $1', [user.companyId]);
     const customerMap: Record<string, string> = {};
     const itemMap: Record<string, string> = {};
     for (const m of mappingsRes.rows) {
@@ -50,8 +50,8 @@ export async function POST(req: NextRequest) {
     // 4. Fetch invoices
     const invoicesRes = await query<any>(
       `SELECT id, invoice_date, supplier, total, filename 
-       FROM invoices WHERE id = ANY($1::int[]) AND user_id = $2`,
-      [invoiceIds, user.id]
+       FROM invoices WHERE id = ANY($1::int[]) AND company_id = $2`,
+      [invoiceIds, user.companyId]
     );
 
     if (invoicesRes.rows.length === 0) {

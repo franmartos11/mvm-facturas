@@ -12,12 +12,12 @@ export default async function TangoIntegrationPage() {
   // Obtener facturas analizadas que no han sido sincronizadas
   const invoicesRes = await query<any>(
     `SELECT * FROM invoices 
-     WHERE user_id = $1 
+     WHERE company_id = $1 
      AND status = 'analyzed' 
      AND supplier IS NOT NULL 
      AND tango_synced = false 
      ORDER BY invoice_date DESC`,
-    [user.id]
+    [user.companyId]
   );
   const pendingInvoices = invoicesRes.rows;
 
@@ -25,9 +25,9 @@ export default async function TangoIntegrationPage() {
   const mappingsRes = await query<any>(
     `SELECT mapping_type, source_name, tango_code, created_at 
      FROM tango_mappings 
-     WHERE user_id = $1
+     WHERE company_id = $1 
      ORDER BY created_at DESC`,
-    [user.id]
+    [user.companyId]
   );
   const mappings = mappingsRes.rows;
 

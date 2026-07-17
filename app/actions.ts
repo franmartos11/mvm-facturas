@@ -164,8 +164,8 @@ export async function getInvoiceById(id: number) {
   if (!user) throw new Error('No autenticado');
 
   const invoiceResult = await query(
-    'SELECT * FROM invoices WHERE id = $1 AND user_id = $2',
-    [id, user.id]
+    'SELECT * FROM invoices WHERE id = $1 AND company_id = $2',
+    [id, user.companyId]
   );
 
   if (invoiceResult.rows.length === 0) return null;
@@ -336,7 +336,7 @@ export async function globalSearch(q: string) {
     WHERE company_id = $1 
       AND (filename ILIKE $2 OR supplier ILIKE $2 OR array_to_string(tags, ', ') ILIKE $2)
     LIMIT 5
-  `, [user.id, queryTerm]);
+  `, [user.companyId, queryTerm]);
 
   // Search items by description or category
   const itemsRes = await query(`
@@ -346,7 +346,7 @@ export async function globalSearch(q: string) {
     WHERE inv.company_id = $1
       AND (ii.description ILIKE $2 OR ii.category ILIKE $2)
     LIMIT 5
-  `, [user.id, queryTerm]);
+  `, [user.companyId, queryTerm]);
 
   return {
     invoices: invoicesRes.rows,
@@ -368,7 +368,7 @@ export async function trackProductPrice(productName: string) {
       AND inv.status = 'analyzed'
       AND ii.description ILIKE $2
     ORDER BY COALESCE(inv.invoice_date, inv.created_at::date) ASC
-  `, [user.id, queryTerm]);
+  `, [user.companyId, queryTerm]);
 
   return itemsRes.rows;
 }
@@ -701,7 +701,7 @@ export async function getAnomalies(threshold = 2.0) {
        AND status = 'analyzed'
      ORDER BY anomaly_score DESC
      LIMIT 20`,
-    [user.id, threshold]
+    [user.companyId, threshold]
   );
 
   return result.rows;
@@ -718,7 +718,7 @@ export async function recalculateAllAnomalies() {
   const invoices = await query<{ id: number; supplier: string; total: string }>(
     `SELECT id, supplier, total FROM invoices
      WHERE company_id = $1 AND invoice_type = 'compra' AND status = 'analyzed' AND total > 0`,
-    [user.id]
+    [user.companyId]
   );
 
   let processed = 0;

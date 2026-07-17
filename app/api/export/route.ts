@@ -20,8 +20,8 @@ export async function GET(request: NextRequest) {
     const maxAmount = searchParams.get('maxAmount') || '';
 
     // Build query conditions
-    const conditions = ['inv.user_id = $1'];
-    const values: any[] = [user.id];
+    const conditions = ['inv.company_id = $1'];
+    const values: any[] = [user.companyId];
     let paramCount = 1;
 
     // By default, exclude invalid and error unless explicitly requested

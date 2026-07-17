@@ -8,8 +8,8 @@ export async function GET(req: NextRequest) {
 
   try {
     const result = await query(
-      'SELECT id, title, updated_at FROM chat_sessions WHERE user_id = $1 ORDER BY updated_at DESC',
-      [user.id]
+      'SELECT id, title, updated_at FROM chat_sessions WHERE company_id = $1 ORDER BY updated_at DESC',
+      [user.companyId]
     );
     return NextResponse.json({ sessions: result.rows });
   } catch (error: any) {
@@ -27,10 +27,10 @@ export async function DELETE(req: NextRequest) {
   try {
     if (id) {
       // Delete a single session
-      await query('DELETE FROM chat_sessions WHERE user_id = $1 AND id = $2', [user.id, id]);
+      await query('DELETE FROM chat_sessions WHERE company_id = $1 AND id = $2', [user.companyId, id]);
     } else {
       // Delete all sessions
-      await query('DELETE FROM chat_sessions WHERE user_id = $1', [user.id]);
+      await query('DELETE FROM chat_sessions WHERE company_id = $1', [user.companyId]);
     }
     return NextResponse.json({ success: true });
   } catch (error: any) {

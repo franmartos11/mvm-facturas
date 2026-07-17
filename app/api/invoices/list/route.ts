@@ -9,10 +9,10 @@ export async function GET() {
   const result = await query(
     `SELECT id, filename, supplier, invoice_date
      FROM invoices
-     WHERE user_id = $1 AND status = 'analyzed'
+     WHERE company_id = $1 AND status = 'analyzed'
      ORDER BY invoice_date DESC NULLS LAST, created_at DESC
      LIMIT 100`,
-    [user.id]
+    [user.companyId]
   );
 
   return NextResponse.json({ invoices: result.rows });

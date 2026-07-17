@@ -9,8 +9,8 @@ export async function GET(req: NextRequest) {
 
   try {
     const result = await query(
-      'SELECT mapping_type, source_name, tango_code FROM tango_mappings WHERE user_id = $1',
-      [user.id]
+      'SELECT mapping_type, source_name, tango_code FROM tango_mappings WHERE company_id = $1',
+      [user.companyId]
     );
     return NextResponse.json({ mappings: result.rows });
   } catch (error: any) {
@@ -37,11 +37,11 @@ export async function POST(req: NextRequest) {
       if (!mapping.mapping_type || !mapping.source_name || !mapping.tango_code) continue;
       
       await query(
-        `INSERT INTO tango_mappings (user_id, mapping_type, source_name, tango_code) 
+        `INSERT INTO tango_mappings (company_id, mapping_type, source_name, tango_code) 
          VALUES ($1, $2, $3, $4)
-         ON CONFLICT (user_id, mapping_type, source_name) 
+         ON CONFLICT (company_id, mapping_type, source_name) 
          DO UPDATE SET tango_code = EXCLUDED.tango_code, created_at = CURRENT_TIMESTAMP`,
-        [user.id, mapping.mapping_type, mapping.source_name, mapping.tango_code]
+        [user.companyId, mapping.mapping_type, mapping.source_name, mapping.tango_code]
       );
     }
 
@@ -67,8 +67,8 @@ export async function DELETE(req: NextRequest) {
     }
 
     await query(
-      'DELETE FROM tango_mappings WHERE user_id = $1 AND mapping_type = $2 AND source_name = $3',
-      [user.id, mapping_type, source_name]
+      'DELETE FROM tango_mappings WHERE company_id = $1 AND mapping_type = $2 AND source_name = $3',
+      [user.companyId, mapping_type, source_name]
     );
 
     return NextResponse.json({ success: true });
